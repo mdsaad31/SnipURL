@@ -53,3 +53,173 @@
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Clerk Component Overrides — Warm Editorial Theme
+   Using !important to reliably override Clerk's internal styles.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Card container — make fully transparent */
+.cl-card,
+.cl-cardBox {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* Root box full width */
+.cl-rootBox {
+  width: 100% !important;
+}
+
+/* Header */
+.cl-headerTitle {
+  font-family: 'DM Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 26px !important;
+  color: var(--text-primary) !important;
+}
+.cl-headerSubtitle {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 14px !important;
+  color: var(--text-tertiary) !important;
+}
+
+/* Social buttons */
+.cl-socialButtonsBlockButton {
+  height: 44px !important;
+  background-color: #FFFFFF !important;
+  border: 1.5px solid var(--border) !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+.cl-socialButtonsBlockButton:hover {
+  background-color: #FDF3E7 !important;
+  border-color: var(--primary) !important;
+}
+.cl-socialButtonsBlockButtonText {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 14px !important;
+  color: var(--text-primary) !important;
+}
+
+/* Divider */
+.cl-dividerLine {
+  background-color: var(--border) !important;
+}
+.cl-dividerText {
+  color: var(--text-tertiary) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+}
+
+/* Form field labels */
+.cl-formFieldLabel {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+}
+
+/* Form field inputs */
+.cl-formFieldInput,
+.cl-input {
+  height: 44px !important;
+  background-color: #FFFFFF !important;
+  border: 1.5px solid var(--border) !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+.cl-formFieldInput:focus,
+.cl-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(193, 122, 46, 0.12) !important;
+}
+
+/* Primary action button */
+.cl-formButtonPrimary {
+  height: 44px !important;
+  background-color: var(--primary) !important;
+  color: #FFFFFF !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+}
+.cl-formButtonPrimary:hover {
+  background-color: var(--primary-hover) !important;
+}
+
+/* Footer links */
+.cl-footerActionText {
+  color: var(--text-tertiary) !important;
+  font-size: 14px !important;
+}
+.cl-footerActionLink {
+  color: var(--primary) !important;
+  font-weight: 500 !important;
+}
+.cl-footerActionLink:hover {
+  color: var(--primary-hover) !important;
+}
+
+/* Field action links (e.g. "Forgot password?") */
+.cl-formFieldAction {
+  color: var(--primary) !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+}
+
+/* "Secured by Clerk" badge & dev mode banner */
+.cl-footer {
+  opacity: 0.6;
+}
+.cl-internal-b3fm6y {
+  background-color: transparent !important;
+}
+
+/* Identity preview (when user is logging back in) */
+.cl-identityPreviewEditButtonIcon {
+  color: var(--primary) !important;
+}
+
+/* "Last used" badge on social buttons */
+.cl-socialButtonsBlockButtonArrow,
+.cl-badge {
+  background-color: #FDF3E7 !important;
+  color: var(--primary) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Phone/OTP input */
+.cl-otpCodeFieldInput {
+  border: 1.5px solid var(--border) !important;
+  border-radius: 8px !important;
+}
+.cl-otpCodeFieldInput:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(193, 122, 46, 0.12) !important;
+}
+
+/* Alert/error messages */
+.cl-formFieldErrorText,
+.cl-formFieldWarningText {
+  color: var(--destructive) !important;
+  font-size: 13px !important;
+}
+.cl-alert {
+  background-color: #FFF8F8 !important;
+  border: 1px solid #F0CECE !important;
+  border-radius: 8px !important;
+  color: var(--destructive) !important;
+}
+

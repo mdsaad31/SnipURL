@@ -26,8 +26,25 @@ export default clerkMiddleware(async (auth, req) => {
   ) {
     const shortCode = url.pathname.substring(1);
 
-    // Rewrite to the internal redirect API route (which handles DB lookup)
-    return NextResponse.rewrite(new URL(`/api/redirect/${shortCode}`, req.url));
+    // Skip paths with multiple segments (e.g. /abc/challenge)
+    if (shortCode.includes("/")) {
+      return NextResponse.next();
+    }
+
+    const rewriteUrl = new URL(`/api/redirect/${shortCode}`, req.url);
+    const response = NextResponse.rewrite(rewriteUrl);
+
+    // Forward geo information to the API route via headers.
+    // These are available in middleware on Vercel and edge runtimes.
+    const geo = req.geo;
+    if (geo?.country) {
+      response.headers.set("x-geo-country", geo.country);
+    }
+    if (geo?.city) {
+      response.headers.set("x-geo-city", geo.city);
+    }
+
+    return response;
   }
 
   return NextResponse.next();

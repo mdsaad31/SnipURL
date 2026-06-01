@@ -54,6 +54,28 @@ interface StatsData {
   devices: DeviceEntry[];
 }
 
+// ISO 3166-1 alpha-2 → country name (common ones)
+const COUNTRY_NAMES: Record<string, string> = {
+  US: "United States", GB: "United Kingdom", CA: "Canada", AU: "Australia",
+  DE: "Germany", FR: "France", JP: "Japan", IN: "India", BR: "Brazil",
+  NL: "Netherlands", SG: "Singapore", KR: "South Korea", IT: "Italy",
+  ES: "Spain", MX: "Mexico", SE: "Sweden", NO: "Norway", DK: "Denmark",
+  FI: "Finland", PL: "Poland", CH: "Switzerland", AT: "Austria",
+  BE: "Belgium", IE: "Ireland", NZ: "New Zealand", PT: "Portugal",
+  CZ: "Czech Republic", RO: "Romania", HU: "Hungary", TR: "Turkey",
+  ZA: "South Africa", AR: "Argentina", CL: "Chile", CO: "Colombia",
+  PH: "Philippines", TH: "Thailand", MY: "Malaysia", ID: "Indonesia",
+  VN: "Vietnam", PK: "Pakistan", BD: "Bangladesh", EG: "Egypt",
+  NG: "Nigeria", KE: "Kenya", GH: "Ghana", AE: "UAE", SA: "Saudi Arabia",
+  IL: "Israel", RU: "Russia", UA: "Ukraine", CN: "China", TW: "Taiwan",
+  HK: "Hong Kong",
+};
+
+function getCountryName(code: string | null): string {
+  if (!code) return "Local / Dev";
+  return COUNTRY_NAMES[code.toUpperCase()] || code.toUpperCase();
+}
+
 const DEVICE_ICONS: Record<string, React.ReactNode> = {
   mobile: <Smartphone className="w-4 h-4 text-text-tertiary" />,
   tablet: <Tablet className="w-4 h-4 text-text-tertiary" />,
@@ -275,7 +297,7 @@ export default function AnalyticsPage() {
                   className="flex items-center justify-between text-sm"
                 >
                   <span className="text-text-primary truncate max-w-[120px]">
-                    {country.country || "Unknown"}
+                    {getCountryName(country.country)}
                   </span>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className="font-medium">{country.count}</span>
