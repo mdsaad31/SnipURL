@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "../../../lib/db";
 import { links } from "../../../lib/db/schema";
 import { getCurrentUser } from "../../../lib/auth";
@@ -61,9 +62,18 @@ export async function POST(req: NextRequest) {
 
     // Handle custom alias — requires authentication
     if (customAlias) {
+      const { userId } = await auth();
+
+      if (!userId) {
+        return NextResponse.json(
+          { success: false, error: { code: "UNAUTHORIZED", message: "Clerk auth failed. Please sign in again." } },
+          { status: 401 }
+        );
+      }
+
       if (!user) {
         return NextResponse.json(
-          { success: false, error: { code: "UNAUTHORIZED", message: "Sign in to use custom aliases" } },
+          { success: false, error: { code: "UNAUTHORIZED", message: "User not found in local database. Please try signing out and signing back in." } },
           { status: 401 }
         );
       }
