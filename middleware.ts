@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
 // Public pages that should NOT be treated as short codes
-const publicPages = ["/pricing", "/about", "/contact", "/blog", "/terms", "/privacy"];
+const publicPages = ["/pricing", "/about", "/contact", "/blog", "/terms", "/privacy", "/termsofservice", "/privacystatement"];
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {

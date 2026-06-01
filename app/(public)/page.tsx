@@ -1,4 +1,6 @@
-import { Scissors, Zap, BarChart2, QrCode } from "lucide-react";
+import { Zap, BarChart2, QrCode } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import { Navbar } from "./_components/navbar";
 import { HeroSection } from "./_components/hero-section";
 import { UrlShortenerForm } from "./_components/url-shortener-form";
@@ -71,10 +73,24 @@ export default function HomePage() {
       <footer className="w-full mt-auto py-8 bg-[#F5EFE6] border-t border-border">
         <div className="max-w-[680px] mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <Scissors className="w-4 h-4 text-primary" />
+            <Image src="/logo.png" alt="Snip" width={20} height={20} />
             <span className="font-medium text-text-primary text-sm">
               © {currentYear} Snip
             </span>
+          </div>
+          <div className="flex gap-6 text-sm text-text-secondary">
+            <Link
+              href="/termsofservice"
+              className="hover:text-primary font-medium transition-colors"
+            >
+              Terms of Service
+            </Link>
+            <Link
+              href="/privacystatement"
+              className="hover:text-primary font-medium transition-colors"
+            >
+              Privacy
+            </Link>
           </div>
         </div>
       </footer>
