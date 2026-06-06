@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   ArrowLeft,
   Copy,
@@ -9,11 +9,15 @@ import {
   Monitor,
   Smartphone,
   Tablet,
+  Download,
+  Laptop,
+  AppWindow,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { ClickChart } from "../../_components/click-chart";
+import { AnalyticsFilter } from "../../_components/analytics-filter";
 
 interface LinkInfo {
   id: string;
@@ -45,6 +49,16 @@ interface DeviceEntry {
   count: number;
 }
 
+interface BrowserEntry {
+  browser: string | null;
+  count: number;
+}
+
+interface OsEntry {
+  os: string | null;
+  count: number;
+}
+
 interface StatsData {
   link: LinkInfo;
   totalClicks: number;
@@ -52,6 +66,8 @@ interface StatsData {
   referrers: ReferrerEntry[];
   countries: CountryEntry[];
   devices: DeviceEntry[];
+  browsers: BrowserEntry[];
+  os: OsEntry[];
 }
 
 // ISO 3166-1 alpha-2 → country name (common ones)
@@ -82,30 +98,64 @@ const DEVICE_ICONS: Record<string, React.ReactNode> = {
   desktop: <Monitor className="w-4 h-4 text-text-tertiary" />,
 };
 
+function getDateRangeBounds(range: string): { start: string; end: string } | null {
+  if (range === "all") return null;
+  const now = new Date();
+  const end = now.toISOString().slice(0, 10);
+  const daysMap: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
+  const days = daysMap[range];
+  if (!days) return null;
+  const startDate = new Date(now);
+  startDate.setDate(startDate.getDate() - days);
+  const start = startDate.toISOString().slice(0, 10);
+  return { start, end };
+}
+
+function formatDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export default function AnalyticsPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState("all");
+
+  const fetchStats = useCallback(async () => {
+    setLoading(true);
+    try {
+      const bounds = getDateRangeBounds(dateRange);
+      let url = `/api/stats/${id}`;
+      if (bounds) {
+        url += `?start=${bounds.start}&end=${bounds.end}`;
+      }
+      const res = await fetch(url);
+      const result = await res.json();
+      if (result.success) {
+        setData(result.data);
+      } else {
+        setError(result.error?.message || "Failed to load analytics");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, dateRange]);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await fetch(`/api/stats/${id}`);
-        const result = await res.json();
-        if (result.success) {
-          setData(result.data);
-        } else {
-          setError(result.error?.message || "Failed to load analytics");
-        }
-      } catch {
-        setError("Network error. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
     if (id) fetchStats();
-  }, [id]);
+  }, [id, fetchStats]);
 
   const domain =
     process.env.NEXT_PUBLIC_APP_URL?.replace("https://", "").replace(
@@ -114,7 +164,31 @@ export default function AnalyticsPage() {
     ) || "snipurl.click";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click";
 
-  if (loading) {
+  const handleExportCSV = async () => {
+    try {
+      const bounds = getDateRangeBounds(dateRange);
+      let url = `/api/stats/${id}?format=csv`;
+      if (bounds) {
+        url += `&start=${bounds.start}&end=${bounds.end}`;
+      }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `snip-clicks-${data?.link.short_code || id}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+      toast.success("CSV exported successfully!");
+    } catch {
+      toast.error("Failed to export CSV");
+    }
+  };
+
+  if (loading && !data) {
     return (
       <div className="flex flex-col gap-6 pb-10">
         <div className="w-48 h-6 skeleton-shimmer rounded" />
@@ -140,8 +214,9 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { link, totalClicks, timeSeries, referrers, countries, devices } = data;
+  const { link, totalClicks, timeSeries, referrers, countries, devices, browsers, os } = data;
   const shortUrl = `${appUrl}/${link.short_code}`;
+  const dateBounds = getDateRangeBounds(dateRange);
 
   let hostname = "";
   let firstLetter = "?";
@@ -168,6 +243,10 @@ export default function AnalyticsPage() {
     return `${(count / totalClicks) * 100}%`;
   };
 
+  // Find last click date from time series
+  const lastClickDate =
+    timeSeries.length > 0 ? timeSeries[timeSeries.length - 1].date : null;
+
   return (
     <div className="flex flex-col gap-6 pb-10 animate-in fade-in duration-300">
       {/* Breadcrumb */}
@@ -184,6 +263,9 @@ export default function AnalyticsPage() {
           {domain}/{link.short_code}
         </span>
       </div>
+
+      {/* Date Range Filter */}
+      <AnalyticsFilter value={dateRange} onChange={setDateRange} />
 
       {/* Link Header Card */}
       <div className="bg-surface border border-border rounded-card p-5 sm:p-6 shadow-sm">
@@ -219,10 +301,32 @@ export default function AnalyticsPage() {
                 <Copy className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Created & Last Click dates */}
+            <div className="flex items-center gap-4 mt-1">
+              <span className="text-xs text-text-tertiary">
+                Created on {formatDate(link.created_at)}
+              </span>
+              {lastClickDate && (
+                <>
+                  <span className="text-xs text-text-tertiary">·</span>
+                  <span className="text-xs text-text-tertiary">
+                    Last click {formatDate(String(lastClickDate))}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Badges */}
+          {/* Badges & Actions */}
           <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-border rounded-btn hover:text-primary hover:border-primary/50 transition-all duration-200"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export CSV
+            </button>
             <div
               className={`px-3 py-1 rounded-full text-xs font-medium border ${
                 link.is_active
@@ -245,10 +349,14 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Chart */}
-      <ClickChart timeSeries={timeSeries} loading={false} />
+      <ClickChart
+        timeSeries={timeSeries}
+        loading={false}
+        dateRange={dateBounds ? { start: dateBounds.start, end: dateBounds.end } : undefined}
+      />
 
-      {/* 3 Columns: Referrers, Countries, Devices */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Analytics Grid: Referrers, Countries, Devices, OS, Browsers */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* Referrers */}
         <div className="bg-surface border border-border rounded-card p-5 shadow-sm">
           <h3 className="font-sans font-medium text-[15px] text-text-primary mb-4">
@@ -352,6 +460,76 @@ export default function AnalyticsPage() {
                   </div>
                 );
               })
+            ) : (
+              <span className="text-sm text-text-tertiary">No data</span>
+            )}
+          </div>
+        </div>
+
+        {/* Browsers */}
+        <div className="bg-surface border border-border rounded-card p-5 shadow-sm">
+          <h3 className="font-sans font-medium text-[15px] text-text-primary mb-4">
+            Browsers
+          </h3>
+          <div className="flex flex-col gap-3">
+            {browsers && browsers.length > 0 ? (
+              browsers.map((browser, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <AppWindow className="w-4 h-4 text-text-tertiary shrink-0" />
+                    <span className="text-text-primary truncate max-w-[120px] capitalize">
+                      {browser.browser || "Unknown"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-medium">{browser.count}</span>
+                    <div className="w-16 h-1.5 bg-[#FDF3E7] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full"
+                        style={{ width: getBarWidth(browser.count) }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <span className="text-sm text-text-tertiary">No data</span>
+            )}
+          </div>
+        </div>
+
+        {/* OS Breakdown */}
+        <div className="bg-surface border border-border rounded-card p-5 shadow-sm">
+          <h3 className="font-sans font-medium text-[15px] text-text-primary mb-4">
+            Operating systems
+          </h3>
+          <div className="flex flex-col gap-3">
+            {os && os.length > 0 ? (
+              os.map((entry, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Laptop className="w-4 h-4 text-text-tertiary shrink-0" />
+                    <span className="text-text-primary truncate max-w-[120px] capitalize">
+                      {entry.os || "Unknown"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-medium">{entry.count}</span>
+                    <div className="w-16 h-1.5 bg-[#FDF3E7] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full"
+                        style={{ width: getBarWidth(entry.count) }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
             ) : (
               <span className="text-sm text-text-tertiary">No data</span>
             )}

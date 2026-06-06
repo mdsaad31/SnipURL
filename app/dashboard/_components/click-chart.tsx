@@ -18,6 +18,7 @@ interface TimeSeriesEntry {
 interface ClickChartProps {
   timeSeries: TimeSeriesEntry[];
   loading: boolean;
+  dateRange?: { start: string; end: string };
 }
 
 interface CustomTooltipProps {
@@ -26,19 +27,59 @@ interface CustomTooltipProps {
   label?: string;
 }
 
+function formatDateLabel(dateStr: string): string {
+  try {
+    const date = new Date(dateStr + "T00:00:00");
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-[#E8E2D9] rounded-[8px] px-3 py-2 shadow-md">
-      <p className="text-[12px] text-[#6B5E54] mb-0.5">{label}</p>
-      <p className="text-[14px] font-medium text-[#C17A2E]">
+    <div className="bg-surface border border-border rounded-btn shadow-sm px-3 py-2">
+      <p className="text-[12px] text-text-secondary mb-0.5">
+        {label ? formatDateLabel(label) : ""}
+      </p>
+      <p className="text-[14px] font-medium text-primary">
         {payload[0].value} click{payload[0].value !== 1 ? "s" : ""}
       </p>
     </div>
   );
 }
 
-export function ClickChart({ timeSeries, loading }: ClickChartProps) {
+function zeroFillDays(
+  timeSeries: TimeSeriesEntry[],
+  start: string,
+  end: string
+): TimeSeriesEntry[] {
+  const dateMap = new Map<string, number>();
+  for (const entry of timeSeries) {
+    // Normalize the date key to YYYY-MM-DD
+    const key = String(entry.date).slice(0, 10);
+    dateMap.set(key, (dateMap.get(key) || 0) + entry.count);
+  }
+
+  const result: TimeSeriesEntry[] = [];
+  const current = new Date(start + "T00:00:00");
+  const endDate = new Date(end + "T00:00:00");
+
+  while (current <= endDate) {
+    const key = current.toISOString().slice(0, 10);
+    result.push({ date: key, count: dateMap.get(key) || 0 });
+    current.setDate(current.getDate() + 1);
+  }
+
+  return result;
+}
+
+export function ClickChart({ timeSeries, loading, dateRange }: ClickChartProps) {
   if (loading) {
     return (
       <div className="bg-surface border border-border rounded-card p-6 shadow-sm">
@@ -48,9 +89,15 @@ export function ClickChart({ timeSeries, loading }: ClickChartProps) {
     );
   }
 
+  // Zero-fill missing days when a date range is provided
+  const filledSeries =
+    dateRange && dateRange.start && dateRange.end
+      ? zeroFillDays(timeSeries, dateRange.start, dateRange.end)
+      : timeSeries;
+
   const chartData =
-    timeSeries.length > 0
-      ? timeSeries
+    filledSeries.length > 0
+      ? filledSeries
       : [{ date: "No data", count: 0 }];
 
   return (

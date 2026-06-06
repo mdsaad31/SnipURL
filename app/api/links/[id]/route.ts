@@ -4,10 +4,13 @@ import { links } from "../../../../lib/db/schema";
 import { requireAuth } from "../../../../lib/auth";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
 const updateLinkSchema = z.object({
   title: z.string().optional(),
   is_active: z.boolean().optional(),
+  password: z.string().nullable().optional(),
+  expiresAt: z.string().datetime({ offset: true }).nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -15,6 +18,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const user = await requireAuth();
     const { id } = await params;
     const body = await req.json();
+
+    // FRAUD PREVENTION: Reject any attempt to change URL or alias
+    if (body.original_url !== undefined || body.short_code !== undefined || body.url !== undefined) {
+      return NextResponse.json(
+        { success: false, error: { code: "BAD_REQUEST", message: "URL and alias cannot be changed after creation" } },
+        { status: 400 }
+      );
+    }
 
     const parsed = updateLinkSchema.safeParse(body);
     if (!parsed.success) {
@@ -36,13 +47,46 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       );
     }
 
+    // Build the update payload
+    const updateData: Record<string, string | boolean | Date | null> = {
+      updated_at: new Date(),
+    };
+
+    if (parsed.data.title !== undefined) {
+      updateData.title = parsed.data.title;
+    }
+
+    if (parsed.data.is_active !== undefined) {
+      updateData.is_active = parsed.data.is_active;
+    }
+
+    // Password handling
+    if (parsed.data.password !== undefined) {
+      if (parsed.data.password === null) {
+        // Explicitly null → remove password
+        updateData.password_hash = null;
+      } else if (parsed.data.password.length > 0) {
+        // Non-empty string → hash and set
+        updateData.password_hash = await bcrypt.hash(parsed.data.password, 10);
+      }
+      // If empty string but not null, don't touch password_hash
+    }
+
+    // Expires_at handling
+    if (parsed.data.expiresAt !== undefined) {
+      if (parsed.data.expiresAt === null) {
+        // Explicitly null → clear expiry
+        updateData.expires_at = null;
+      } else {
+        // String → parse to Date
+        updateData.expires_at = new Date(parsed.data.expiresAt);
+      }
+    }
+
     // Update only the owned link (scoped by user_id for safety)
     const [updatedLink] = await db
       .update(links)
-      .set({
-        ...parsed.data,
-        updated_at: new Date(),
-      })
+      .set(updateData)
       .where(and(eq(links.id, id), eq(links.user_id, user.id)))
       .returning();
 

@@ -4,7 +4,7 @@ import { links } from "../../../../lib/db/schema";
 import { requireAuth } from "../../../../lib/auth";
 import { eq, and, sql } from "drizzle-orm";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireAuth();
     const { id } = await params;
@@ -21,9 +21,98 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       );
     }
 
+    // Parse optional date range filters
+    const startParam = req.nextUrl.searchParams.get("start");
+    const endParam = req.nextUrl.searchParams.get("end");
+    const format = req.nextUrl.searchParams.get("format");
+    const raw = req.nextUrl.searchParams.get("raw");
+
+    // Build date filter SQL fragment
+    const dateFilter =
+      startParam && endParam
+        ? sql` AND created_at >= ${startParam}::timestamptz AND created_at <= ${endParam}::timestamptz`
+        : sql``;
+
+    // ── CSV Export ─────────────────────────────────────────────────────
+    if (format === "csv") {
+      let csvContent: string;
+      let filename: string;
+
+      if (raw === "true") {
+        // Raw individual click rows
+        const rows = await db.execute(sql`
+          SELECT 
+            created_at, country, city, device_type, browser, os, referrer
+          FROM clicks
+          WHERE link_id = ${id} ${dateFilter}
+          ORDER BY created_at DESC
+        `);
+
+        const header = "created_at,country,city,device_type,browser,os,referrer";
+        const lines = rows.map((r: Record<string, unknown>) =>
+          [
+            r.created_at,
+            r.country ?? "",
+            r.city ?? "",
+            r.device_type ?? "",
+            r.browser ?? "",
+            r.os ?? "",
+            r.referrer ?? "",
+          ]
+            .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+            .join(",")
+        );
+        csvContent = [header, ...lines].join("\n");
+        filename = `snip-clicks-raw-${link.short_code}.csv`;
+      } else {
+        // Aggregated CSV
+        const rows = await db.execute(sql`
+          SELECT 
+            DATE(created_at) as date, 
+            country, 
+            device_type, 
+            browser, 
+            os, 
+            referrer, 
+            COUNT(*)::int as count
+          FROM clicks
+          WHERE link_id = ${id} ${dateFilter}
+          GROUP BY DATE(created_at), country, device_type, browser, os, referrer
+          ORDER BY date DESC
+        `);
+
+        const header = "date,country,device_type,browser,os,referrer,count";
+        const lines = rows.map((r: Record<string, unknown>) =>
+          [
+            r.date,
+            r.country ?? "",
+            r.device_type ?? "",
+            r.browser ?? "",
+            r.os ?? "",
+            r.referrer ?? "",
+            r.count,
+          ]
+            .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+            .join(",")
+        );
+        csvContent = [header, ...lines].join("\n");
+        filename = `snip-clicks-${link.short_code}.csv`;
+      }
+
+      return new NextResponse(csvContent, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+        },
+      });
+    }
+
+    // ── JSON Analytics ────────────────────────────────────────────────
+
     // Total clicks
     const totalClicksResult = await db.execute(sql`
-      SELECT COUNT(*)::int as count FROM clicks WHERE link_id = ${id}
+      SELECT COUNT(*)::int as count FROM clicks WHERE link_id = ${id} ${dateFilter}
     `);
     const totalClicks = Number(totalClicksResult[0]?.count) || 0;
 
@@ -31,7 +120,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const timeSeries = await db.execute(sql`
       SELECT DATE(created_at) as date, COUNT(*)::int as count 
       FROM clicks 
-      WHERE link_id = ${id}
+      WHERE link_id = ${id} ${dateFilter}
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     `);
@@ -40,7 +129,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const referrers = await db.execute(sql`
       SELECT referrer, COUNT(*)::int as count 
       FROM clicks 
-      WHERE link_id = ${id}
+      WHERE link_id = ${id} ${dateFilter}
       GROUP BY referrer
       ORDER BY count DESC
       LIMIT 10
@@ -50,7 +139,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const countries = await db.execute(sql`
       SELECT country, COUNT(*)::int as count 
       FROM clicks 
-      WHERE link_id = ${id}
+      WHERE link_id = ${id} ${dateFilter}
       GROUP BY country
       ORDER BY count DESC
       LIMIT 10
@@ -60,7 +149,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const devices = await db.execute(sql`
       SELECT device_type, COUNT(*)::int as count 
       FROM clicks 
-      WHERE link_id = ${id}
+      WHERE link_id = ${id} ${dateFilter}
       GROUP BY device_type
       ORDER BY count DESC
     `);
@@ -69,10 +158,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const browsers = await db.execute(sql`
       SELECT browser, COUNT(*)::int as count 
       FROM clicks 
-      WHERE link_id = ${id}
+      WHERE link_id = ${id} ${dateFilter}
       GROUP BY browser
       ORDER BY count DESC
       LIMIT 5
+    `);
+
+    // OS breakdown
+    const os = await db.execute(sql`
+      SELECT os, COUNT(*)::int as count 
+      FROM clicks 
+      WHERE link_id = ${id} ${dateFilter}
+      GROUP BY os
+      ORDER BY count DESC
+      LIMIT 10
     `);
 
     return NextResponse.json({
@@ -85,6 +184,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         countries,
         devices,
         browsers,
+        os,
       },
     });
   } catch (error) {

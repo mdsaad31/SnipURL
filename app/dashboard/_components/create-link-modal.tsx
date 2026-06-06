@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { X, XCircle } from "lucide-react";
+import { X, XCircle, ChevronDown, Eye, EyeOff } from "lucide-react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCreateLink } from "../_hooks/use-links";
 
@@ -18,6 +18,10 @@ function CreateLinkModalContent({
   const [url, setUrl] = useState("");
   const [customAlias, setCustomAlias] = useState("");
   const [title, setTitle] = useState("");
+  const [password, setPassword] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState("");
 
   const { createLink, loading } = useCreateLink(() => {
@@ -40,6 +44,10 @@ function CreateLinkModalContent({
     setUrl("");
     setCustomAlias("");
     setTitle("");
+    setPassword("");
+    setExpiresAt("");
+    setShowPassword(false);
+    setShowAdvanced(false);
     setError("");
   }, [searchParams, router, pathname]);
 
@@ -63,6 +71,8 @@ function CreateLinkModalContent({
       url,
       customAlias: customAlias || undefined,
       title: title || undefined,
+      password: password || undefined,
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
     });
 
     if (!result) {
@@ -157,6 +167,66 @@ function CreateLinkModalContent({
                 placeholder="My awesome link"
                 className="h-[44px] px-3 bg-white border-[1.5px] border-border rounded-btn focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none text-base text-text-primary placeholder:text-text-tertiary transition-all"
               />
+            </div>
+
+            {/* Advanced Options Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors self-start -mt-1"
+            >
+              Advanced options
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${showAdvanced ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {/* Advanced Options Section */}
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${showAdvanced ? "max-h-[300px] opacity-100" : "max-h-0 opacity-0"}`}
+            >
+              <div className="flex flex-col gap-5 pt-1">
+                {/* Password */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-sans font-medium text-[13px] text-text-primary">
+                    Password protection
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Optional password protection"
+                      className="h-[44px] w-full px-3 pr-10 bg-white border-[1.5px] border-border rounded-btn focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none text-base text-text-primary placeholder:text-text-tertiary transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text-secondary transition-colors"
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expiry Date */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-sans font-medium text-[13px] text-text-primary">
+                    Link expires on
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={expiresAt}
+                    onChange={(e) => setExpiresAt(e.target.value)}
+                    className="h-[44px] w-full px-3 bg-white border-[1.5px] border-border rounded-btn focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none text-sm text-text-primary placeholder:text-text-tertiary transition-all [color-scheme:light]"
+                  />
+                </div>
+              </div>
             </div>
           </form>
         </div>

@@ -6,6 +6,8 @@ export const users = pgTable("users", {
   id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
   clerk_id: varchar("clerk_id", { length: 255 }).notNull().unique(),
   email: varchar("email", { length: 255 }).notNull().unique(),
+  default_expiry_hours: integer("default_expiry_hours"),
+  link_limit: integer("link_limit").default(500).notNull(),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });

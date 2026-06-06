@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, MousePointer2, BarChart2, Trash2 } from "lucide-react";
+import { Copy, Check, MousePointer2, BarChart2, Trash2, Pencil, Lock, Clock } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import type { LinkData } from "../_hooks/use-links";
@@ -10,9 +10,10 @@ interface LinkCardProps {
   link: LinkData;
   onDelete: (id: string) => void;
   onToggle: (id: string, active: boolean) => void;
+  onEdit?: (link: LinkData) => void;
 }
 
-export function LinkCard({ link, onDelete, onToggle }: LinkCardProps) {
+export function LinkCard({ link, onDelete, onToggle, onEdit }: LinkCardProps) {
   const [copied, setCopied] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -83,13 +84,18 @@ export function LinkCard({ link, onDelete, onToggle }: LinkCardProps) {
       </div>
 
       {/* Middle: Short URL */}
-      <div className="flex-1 shrink-0 flex items-center">
+      <div className="flex-1 shrink-0 flex items-center gap-1.5">
         <button
           onClick={handleCopy}
           className="font-mono font-medium text-[14px] text-primary hover:text-primary-hover hover:underline truncate"
         >
           {domain}/{link.short_code}
         </button>
+        {link.password_hash && (
+          <span title="Password protected">
+            <Lock className="w-3 h-3 text-primary/70 shrink-0" />
+          </span>
+        )}
       </div>
 
       {/* Right: Stats + Actions */}
@@ -109,6 +115,19 @@ export function LinkCard({ link, onDelete, onToggle }: LinkCardProps) {
               year: "numeric",
             })}
           </div>
+          {link.expires_at && (
+            new Date(link.expires_at) > new Date() ? (
+              <span className="hidden md:inline-flex items-center gap-1 text-[11px] bg-[#E6F4EE] text-[#2D6A5B] px-2 py-0.5 rounded-full font-medium">
+                <Clock className="w-2.5 h-2.5" />
+                Expires {new Date(link.expires_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+              </span>
+            ) : (
+              <span className="hidden md:inline-flex items-center gap-1 text-[11px] bg-red-50 text-destructive px-2 py-0.5 rounded-full font-medium">
+                <Clock className="w-2.5 h-2.5" />
+                Expired
+              </span>
+            )
+          )}
         </div>
 
         {/* Actions */}
@@ -124,6 +143,19 @@ export function LinkCard({ link, onDelete, onToggle }: LinkCardProps) {
               <Copy className="w-4 h-4" />
             )}
           </button>
+          {onEdit && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onEdit(link);
+              }}
+              className="p-2 text-text-secondary hover:text-primary hover:bg-[#FDF3E7] rounded-btn transition-colors"
+              title="Edit link"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
           <Link
             href={`/dashboard/analytics/${link.id}`}
             className="p-2 text-text-secondary hover:text-primary hover:bg-[#FDF3E7] rounded-btn transition-colors"

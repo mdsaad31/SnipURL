@@ -12,17 +12,29 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
 
     const url = `${env.NEXT_PUBLIC_APP_URL}/${code}`;
 
-    // Check if SVG format is requested via query param (e.g. ?format=svg)
+    // Parse query parameters
     const format = req.nextUrl.searchParams.get("format") || "png";
+
+    const sizeParam = req.nextUrl.searchParams.get("size");
+    const size = sizeParam
+      ? Math.min(1000, Math.max(100, parseInt(sizeParam, 10) || 300))
+      : 300;
+
+    const colorParam = req.nextUrl.searchParams.get("color");
+    const color =
+      colorParam && /^#[0-9a-fA-F]{6}$/.test(colorParam)
+        ? colorParam
+        : "#1A1410";
 
     if (format === "svg") {
       const svg = await QRCode.toString(url, {
         type: "svg",
         color: {
-          dark: "#1A1410",
+          dark: color,
           light: "#00000000",
         },
         margin: 1,
+        width: size,
       });
 
       return new NextResponse(svg, {
@@ -35,11 +47,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
       const buffer = await QRCode.toBuffer(url, {
         type: "png",
         color: {
-          dark: "#1A1410",
+          dark: color,
           light: "#FDFAF5",
         },
         margin: 2,
-        width: 300,
+        width: size,
       });
 
       return new NextResponse(new Uint8Array(buffer), {

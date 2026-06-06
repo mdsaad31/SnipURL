@@ -3,11 +3,13 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
-import { Scissors, LayoutDashboard, Link as LinkIcon } from "lucide-react";
+import { Scissors, LayoutDashboard, Link as LinkIcon, QrCode, Settings, UserCircle } from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Links", href: "/dashboard/links", icon: LinkIcon },
+  { label: "QR Codes", href: "/dashboard/qr-codes", icon: QrCode },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -50,20 +52,25 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Bottom: User */}
-        <div className="p-4 mt-auto">
-          <div className="flex items-center gap-3 px-3 py-2 border-t border-border pt-4">
+        {/* Bottom: User + Account link */}
+        <div className="p-4 mt-auto border-t border-border">
+          <Link
+            href="/dashboard/account"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-btn transition-colors w-full ${
+              pathname === "/dashboard/account"
+                ? "bg-[#FDF3E7] text-primary"
+                : "text-text-secondary hover:bg-background hover:text-text-primary"
+            }`}
+          >
             <UserButton
               appearance={{
-                elements: { userButtonAvatarBox: "w-8 h-8" },
+                elements: { userButtonAvatarBox: "w-7 h-7" },
               }}
             />
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-text-primary truncate max-w-[130px]">
-                My Account
-              </span>
-            </div>
-          </div>
+            <span className="text-sm font-medium truncate max-w-[130px]">
+              My Account
+            </span>
+          </Link>
         </div>
       </aside>
 
@@ -88,16 +95,17 @@ export function Sidebar() {
             </Link>
           );
         })}
-        <div className="flex flex-col items-center gap-0.5 px-3 py-2">
-          <UserButton
-            appearance={{
-              elements: { userButtonAvatarBox: "w-5 h-5" },
-            }}
-          />
-          <span className="text-[10px] font-medium text-text-tertiary">
-            Account
-          </span>
-        </div>
+        <Link
+          href="/dashboard/account"
+          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-btn transition-colors ${
+            pathname === "/dashboard/account"
+              ? "text-primary"
+              : "text-text-tertiary hover:text-text-primary"
+          }`}
+        >
+          <UserCircle className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Account</span>
+        </Link>
       </div>
     </>
   );

@@ -124,6 +124,47 @@ export function useDeleteLink(onSuccess?: () => void) {
   return { deleteLink, loading };
 }
 
+export interface EditLinkPayload {
+  title?: string;
+  password?: string | null;
+  expiresAt?: string | null;
+  is_active?: boolean;
+}
+
+export function useEditLink(onSuccess?: () => void) {
+  const [loading, setLoading] = useState(false);
+
+  const editLink = useCallback(
+    async (id: string, payload: EditLinkPayload) => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/links/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          toast.success("Link updated successfully!");
+          onSuccess?.();
+          return data.data as LinkData;
+        } else {
+          toast.error(data.error?.message || "Failed to update link");
+          return null;
+        }
+      } catch {
+        toast.error("Network error. Please try again.");
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onSuccess]
+  );
+
+  return { editLink, loading };
+}
+
 export function useToggleLink() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
@@ -155,3 +196,62 @@ export function useToggleLink() {
 
   return { toggleLink, loadingId };
 }
+
+export function useBulkActions(onSuccess?: () => void) {
+  const [loading, setLoading] = useState(false);
+
+  const bulkDelete = useCallback(
+    async (ids: string[]) => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/links/bulk", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          toast.success(`${data.data.deleted} link(s) deleted`);
+          onSuccess?.();
+        } else {
+          toast.error(data.error?.message || "Failed to delete links");
+        }
+      } catch {
+        toast.error("Network error. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onSuccess]
+  );
+
+  const bulkToggle = useCallback(
+    async (ids: string[], active: boolean) => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/links/bulk", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids, is_active: active }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          toast.success(
+            `${data.data.updated} link(s) ${active ? "activated" : "deactivated"}`
+          );
+          onSuccess?.();
+        } else {
+          toast.error(data.error?.message || "Failed to update links");
+        }
+      } catch {
+        toast.error("Network error. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onSuccess]
+  );
+
+  return { bulkDelete, bulkToggle, loading };
+}
+

@@ -3,16 +3,50 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Snip",
+  title: "Terms of Service",
   description:
     "Read the Terms of Service for Snip, the URL shortener. Learn about acceptable use, account responsibilities, and our service commitments.",
+  openGraph: {
+    title: "Terms of Service — Snip",
+    description:
+      "Read the Terms of Service for Snip. Learn about acceptable use, account responsibilities, and our service commitments.",
+    url: "/termsofservice",
+  },
+  twitter: {
+    title: "Terms of Service — Snip",
+    description:
+      "Read the Terms of Service for Snip. Learn about acceptable use, account responsibilities, and our service commitments.",
+  },
+  alternates: {
+    canonical: "/termsofservice",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  name: "Terms of Service — Snip",
+  description:
+    "Terms of Service for the Snip URL shortener service.",
+  url: `${process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click"}/termsofservice`,
+  inLanguage: "en",
+  isPartOf: {
+    "@type": "WebSite",
+    name: "Snip",
+    url: process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click",
+  },
 };
 
 export default function TermsOfServicePage() {
   const effectiveDate = "June 1, 2025";
-  const lastUpdated = "June 1, 2025";
+  const lastUpdated = "June 6, 2026";
 
   return (
+    <>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
     <main className="min-h-screen bg-background">
       {/* Header */}
       <header className="w-full border-b border-border bg-surface/80 backdrop-blur-sm sticky top-0 z-30">
@@ -126,6 +160,26 @@ export default function TermsOfServicePage() {
               violates this policy without prior notice. Repeated violations may result 
               in permanent account suspension.
             </p>
+
+            <h3>4.1 Copyright Infringement & DMCA Takedown</h3>
+            <p>
+              If you believe that content accessible through a Snip shortened link 
+              infringes your copyright, you may submit a takedown notice to us. Your 
+              notice must include:
+            </p>
+            <ul>
+              <li>A description of the copyrighted work you claim has been infringed</li>
+              <li>The Snip shortened URL that you claim is infringing</li>
+              <li>Your contact information (name, address, email, phone number)</li>
+              <li>A statement that you have a good-faith belief that the use is not authorized</li>
+              <li>A statement, under penalty of perjury, that the information is accurate and you are authorized to act on behalf of the copyright owner</li>
+              <li>Your physical or electronic signature</li>
+            </ul>
+            <p>
+              Send takedown notices to the contact information in Section 14. We will 
+              respond to valid notices within 48 hours and may disable the infringing 
+              link. Counter-notifications may be submitted following the same process.
+            </p>
           </Section>
 
           <Section number="5" title="Link Permanence & Availability">
@@ -179,7 +233,20 @@ export default function TermsOfServicePage() {
             </ul>
           </Section>
 
-          <Section number="8" title="Limitation of Liability">
+          <Section number="8" title="Age Requirement">
+            <p>
+              You must be at least 13 years of age to use the Service. If you are 
+              between 13 and 18 years of age, you represent that you have obtained 
+              parental or guardian consent to use the Service and agree to these Terms.
+            </p>
+            <p>
+              If we learn that we have collected personal information from a child 
+              under the age of 13, we will promptly delete that information and 
+              terminate the associated account.
+            </p>
+          </Section>
+
+          <Section number="9" title="Limitation of Liability">
             <p>
               To the maximum extent permitted by applicable law, Snip and its 
               creators shall not be liable for any indirect, incidental, special, 
@@ -198,7 +265,7 @@ export default function TermsOfServicePage() {
             </p>
           </Section>
 
-          <Section number="9" title="Indemnification">
+          <Section number="10" title="Indemnification">
             <p>
               You agree to indemnify and hold harmless Snip, its creators, and 
               affiliates from any claims, damages, losses, liabilities, and expenses 
@@ -212,7 +279,7 @@ export default function TermsOfServicePage() {
             </ul>
           </Section>
 
-          <Section number="10" title="Termination">
+          <Section number="11" title="Termination">
             <p>
               We may suspend or terminate your access to the Service at any time, 
               with or without cause, with or without notice. Upon termination:
@@ -229,20 +296,35 @@ export default function TermsOfServicePage() {
             </p>
           </Section>
 
-          <Section number="11" title="Governing Law & Disputes">
+          <Section number="12" title="Link Immutability">
             <p>
-              These Terms shall be governed by and construed in accordance with 
-              applicable laws, without regard to conflict of law provisions. Any 
-              disputes arising from these Terms or your use of the Service shall 
-              be resolved through good-faith negotiation. If negotiation fails, 
-              disputes shall be submitted to binding arbitration.
+              Once a shortened link is created, its original destination URL and 
+              short alias cannot be modified. This policy exists to prevent fraud, 
+              link hijacking, and other deceptive practices. Users may update other 
+              link properties (title, password, expiration) but the core URL-to-alias 
+              mapping is permanent.
             </p>
           </Section>
 
-          <Section number="12" title="Contact">
+          <Section number="13" title="Governing Law & Disputes">
             <p>
-              If you have questions or concerns about these Terms, please contact 
-              us at:
+              These Terms shall be governed by and construed in accordance with the 
+              laws of India, without regard to conflict of law provisions. Any 
+              disputes arising from these Terms or your use of the Service shall be 
+              resolved through good-faith negotiation. If negotiation fails, disputes 
+              shall be submitted to binding arbitration in accordance with the 
+              Arbitration and Conciliation Act, 1996 of India.
+            </p>
+            <p>
+              The courts located in Hyderabad, Telangana, India shall have exclusive 
+              jurisdiction over any claims not subject to arbitration.
+            </p>
+          </Section>
+
+          <Section number="14" title="Contact">
+            <p>
+              If you have questions or concerns about these Terms, including 
+              DMCA takedown notices, please contact us at:
             </p>
             <div className="bg-[#F5EFE6] border border-border rounded-[12px] p-5 mt-3">
               <p className="text-text-primary font-medium mb-1">Snip — Legal Team</p>
@@ -280,6 +362,7 @@ export default function TermsOfServicePage() {
         </div>
       </footer>
     </main>
+    </>
   );
 }
 

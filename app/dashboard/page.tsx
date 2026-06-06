@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -8,6 +8,8 @@ import { useLinks, useDeleteLink, useToggleLink } from "./_hooks/use-links";
 import { StatsCards } from "./_components/stats-cards";
 import { LinkCard } from "./_components/link-card";
 import { EmptyState } from "./_components/empty-state";
+import { EditLinkModal } from "./_components/edit-link-modal";
+import type { LinkData } from "./_hooks/use-links";
 
 function DashboardContent() {
   const pathname = usePathname();
@@ -15,6 +17,7 @@ function DashboardContent() {
   const { links, loading, mutate } = useLinks();
   const { deleteLink } = useDeleteLink(mutate);
   const { toggleLink } = useToggleLink();
+  const [editingLink, setEditingLink] = useState<LinkData | null>(null);
 
   const handleToggle = async (id: string, currentActive: boolean) => {
     const result = await toggleLink(id, currentActive);
@@ -79,6 +82,7 @@ function DashboardContent() {
                 link={link}
                 onDelete={deleteLink}
                 onToggle={handleToggle}
+                onEdit={setEditingLink}
               />
             ))
           ) : (
@@ -86,6 +90,12 @@ function DashboardContent() {
           )}
         </div>
       </div>
+
+      <EditLinkModal
+        link={editingLink}
+        onClose={() => setEditingLink(null)}
+        onSuccess={mutate}
+      />
     </div>
   );
 }

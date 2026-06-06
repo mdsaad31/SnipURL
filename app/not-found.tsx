@@ -1,5 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Scissors } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Page Not Found",
+  description:
+    "The link you're looking for may have expired, been deactivated, or never existed.",
+  robots: {
+    index: false,
+    follow: true,
+  },
+};
 
 export default function NotFound() {
   return (
@@ -37,15 +48,15 @@ export default function NotFound() {
             Go to homepage
           </Link>
           <Link 
-            href="/contact" 
+            href="/" 
             className="w-full sm:w-auto px-6 py-3 text-text-secondary hover:bg-[#F5EFE6] hover:text-text-primary font-medium rounded-btn transition-colors text-center"
           >
-            Report an issue
+            Shorten a link
           </Link>
         </div>
 
         <Link 
-          href="/" 
+          href="/sign-up" 
           className="text-sm font-medium text-primary hover:text-primary-hover transition-colors inline-flex items-center gap-1 group"
         >
           Try Snip for free

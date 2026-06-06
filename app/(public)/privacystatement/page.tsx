@@ -3,16 +3,50 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Statement — Snip",
+  title: "Privacy Statement",
   description:
     "Learn how Snip collects, uses, and protects your personal information. Our privacy practices are transparent and designed to keep your data safe.",
+  openGraph: {
+    title: "Privacy Statement — Snip",
+    description:
+      "Learn how Snip collects, uses, and protects your personal information.",
+    url: "/privacystatement",
+  },
+  twitter: {
+    title: "Privacy Statement — Snip",
+    description:
+      "Learn how Snip collects, uses, and protects your personal information.",
+  },
+  alternates: {
+    canonical: "/privacystatement",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  name: "Privacy Statement — Snip",
+  description:
+    "Privacy Statement for the Snip URL shortener service.",
+  url: `${process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click"}/privacystatement`,
+  inLanguage: "en",
+  isPartOf: {
+    "@type": "WebSite",
+    name: "Snip",
+    url: process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click",
+  },
 };
 
 export default function PrivacyStatementPage() {
   const effectiveDate = "June 1, 2025";
-  const lastUpdated = "June 1, 2025";
+  const lastUpdated = "June 6, 2026";
 
   return (
+    <>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
     <main className="min-h-screen bg-background">
       {/* Header */}
       <header className="w-full border-b border-border bg-surface/80 backdrop-blur-sm sticky top-0 z-30">
@@ -145,10 +179,19 @@ export default function PrivacyStatementPage() {
             <DataTable
               rows={[
                 { purpose: "Clerk", data: "Authentication data", basis: "Account sign-in/up" },
-                { purpose: "CockroachDB / Neon", data: "All stored data (encrypted)", basis: "Database hosting" },
+                { purpose: "Neon (PostgreSQL)", data: "All stored data (encrypted)", basis: "Database hosting" },
                 { purpose: "Vercel", data: "Request headers, geo-IP", basis: "App hosting & CDN" },
               ]}
             />
+            <p>
+              For more information about how these providers handle your data, 
+              please review their privacy policies:
+            </p>
+            <ul>
+              <li><a href="https://clerk.com/legal/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary-hover underline underline-offset-2">Clerk Privacy Policy</a></li>
+              <li><a href="https://neon.tech/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary-hover underline underline-offset-2">Neon Privacy Policy</a></li>
+              <li><a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary-hover underline underline-offset-2">Vercel Privacy Policy</a></li>
+            </ul>
             <p>
               We do <strong>not</strong> share your data with advertisers, data 
               brokers, or analytics platforms. We do not embed third-party 
@@ -187,6 +230,15 @@ export default function PrivacyStatementPage() {
               storage or transmission is 100% secure. We cannot guarantee 
               absolute security.
             </p>
+
+            <h3>5.1 Do Not Track (DNT) Signals</h3>
+            <p>
+              Some browsers offer a &ldquo;Do Not Track&rdquo; (DNT) setting. Snip 
+              does not currently respond to DNT signals, as there is no universally 
+              accepted standard for how websites should interpret them. However, our 
+              data collection practices are already minimal — we do not track users 
+              across websites, use advertising cookies, or build user profiles.
+            </p>
           </Section>
 
           <Section number="6" title="Your Rights">
@@ -222,10 +274,13 @@ export default function PrivacyStatementPage() {
           <Section number="8" title="Children's Privacy">
             <p>
               The Service is not intended for use by children under the age of 13. 
-              We do not knowingly collect personal information from children under 
-              13. If we discover that we have inadvertently collected such information, 
-              we will take steps to delete it promptly. If you believe a child under 
-              13 has provided us with personal data, please contact us immediately.
+              If you are between 13 and 18 years of age, you must have parental or 
+              guardian consent to use the Service. We do not knowingly collect 
+              personal information from children under 13. If we discover that we 
+              have inadvertently collected such information, we will take steps to 
+              delete it promptly and terminate the associated account. If you believe 
+              a child under 13 has provided us with personal data, please contact us 
+              immediately.
             </p>
           </Section>
 
@@ -267,6 +322,36 @@ export default function PrivacyStatementPage() {
               </p>
             </div>
           </Section>
+
+          <Section number="12" title="GDPR & CCPA Compliance">
+            <h3>For Users in the European Economic Area (EEA)</h3>
+            <p>
+              If you are located in the EEA, the General Data Protection Regulation 
+              (GDPR) applies to our processing of your personal data. Under the GDPR, 
+              you have the rights listed in Section 6 above, including the right to 
+              lodge a complaint with your local Data Protection Authority. Our legal 
+              bases for processing are: consent (account creation), legitimate interest 
+              (abuse prevention, service improvement), and contractual necessity 
+              (service operation).
+            </p>
+
+            <h3>For Users in California</h3>
+            <p>
+              If you are a California resident, the California Consumer Privacy Act 
+              (CCPA) provides you with additional rights regarding your personal 
+              information. You have the right to:
+            </p>
+            <ul>
+              <li>Know what personal information we collect about you and how it is used</li>
+              <li>Request deletion of your personal information</li>
+              <li>Opt out of the sale of your personal information (note: we do <strong>not</strong> sell personal information)</li>
+              <li>Non-discrimination for exercising your CCPA rights</li>
+            </ul>
+            <p>
+              To exercise your rights under GDPR or CCPA, contact us at the email 
+              address provided in Section 13.
+            </p>
+          </Section>
         </div>
 
         {/* Cross-link */}
@@ -307,6 +392,7 @@ export default function PrivacyStatementPage() {
         </div>
       </footer>
     </main>
+    </>
   );
 }
 
