@@ -126,29 +126,50 @@ export function Sidebar() {
         </nav>
 
         {/* Bottom: User */}
-        <div className={`mt-auto border-t border-border ${collapsed ? "p-2" : "p-4"}`}>
-          <Link
-            href="/dashboard/account"
-            title={collapsed ? "My Account" : undefined}
-            className={`flex items-center gap-3 py-2.5 rounded-btn transition-colors ${
-              collapsed ? "justify-center px-2" : "px-3"
-            } ${
-              pathname === "/dashboard/account"
-                ? "bg-[#FDF3E7] text-primary"
-                : "text-text-secondary hover:bg-background hover:text-text-primary"
-            }`}
-          >
-            <UserButton
-              appearance={{
-                elements: { userButtonAvatarBox: "w-7 h-7" },
-              }}
-            />
-            {!collapsed && (
-              <span className="text-sm font-medium truncate max-w-[140px]">
-                {displayName}
-              </span>
-            )}
-          </Link>
+        <div className={`mt-auto border-t border-border ${collapsed ? "p-2" : "p-3"}`}>
+          {collapsed ? (
+            /* Collapsed: just the avatar centered */
+            <div className="flex justify-center py-1.5">
+              <UserButton
+                appearance={{
+                  elements: { userButtonAvatarBox: "w-8 h-8" },
+                }}
+              />
+            </div>
+          ) : (
+            /* Expanded: avatar + name side by side, properly separated */
+            <div
+              className={`flex items-center gap-2.5 px-2 py-2 rounded-btn transition-colors ${
+                pathname === "/dashboard/account"
+                  ? "bg-[#FDF3E7]"
+                  : "hover:bg-background"
+              }`}
+            >
+              {/* Avatar — opens Clerk dropdown on click */}
+              <div className="shrink-0">
+                <UserButton
+                  appearance={{
+                    elements: { userButtonAvatarBox: "w-8 h-8" },
+                  }}
+                />
+              </div>
+              {/* Name — navigates to account page */}
+              <Link
+                href="/dashboard/account"
+                className="flex-1 min-w-0"
+              >
+                <span
+                  className={`block text-sm font-medium truncate ${
+                    pathname === "/dashboard/account"
+                      ? "text-primary"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  {displayName}
+                </span>
+              </Link>
+            </div>
+          )}
         </div>
       </aside>
 
