@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Serif_Display, DM_Sans, JetBrains_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "sonner";
+import { MonetagAds } from "@/components/monetag-ads";
 import "./globals.css";
 
 const dmSerif = DM_Serif_Display({
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click"
   ),
   title: {
-    default: "Snip — Make every link count",
+    default: "Snip — Free URL Shortener, Branded Links & Analytics",
     template: "%s — Snip",
   },
   description:
@@ -42,6 +43,17 @@ export const metadata: Metadata = {
     "branded links",
     "free URL shortener",
     "Snip",
+    "snip url",
+    "snipurl",
+    "snip links",
+    "best free url shortener",
+    "custom link shortener",
+    "link shortener custom alias",
+    "free url shortener with analytics",
+    "bitly alternative free",
+    "tinyurl alternative",
+    "open source url shortener",
+    "secure link shortener",
   ],
   authors: [{ name: "Snip" }],
   creator: "Snip",
@@ -51,7 +63,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "/",
     siteName: "Snip",
-    title: "Snip — Make every link count",
+    title: "Snip — Free URL Shortener, Branded Links & Analytics",
     description:
       "Shorten, brand, and track your links in one beautiful place. Free forever.",
     images: [
@@ -59,14 +71,14 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Snip — Make every link count",
+        alt: "Snip — Free URL Shortener, Branded Links & Analytics",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Snip — Make every link count",
+    title: "Snip — Free URL Shortener, Branded Links & Analytics",
     description:
       "Shorten, brand, and track your links in one beautiful place. Free forever.",
     images: ["/og.png"],
@@ -119,6 +131,7 @@ export default function RootLayout({
               },
             }}
           />
+          <MonetagAds />
         </body>
       </html>
     </ClerkProvider>

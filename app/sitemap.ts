@@ -1,11 +1,12 @@
 import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click";
+  // Normalize base URL by removing any trailing slash
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click").replace(/\/$/, "");
 
   return [
     {
-      url: baseUrl,
+      url: `${baseUrl}/`, // Explicit trailing slash to match canonical "/"
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1.0,
@@ -24,13 +25,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${baseUrl}/termsofservice`,
-      lastModified: new Date("2025-06-01"),
+      lastModified: new Date("2026-06-06"),
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${baseUrl}/privacystatement`,
-      lastModified: new Date("2025-06-01"),
+      lastModified: new Date("2026-06-06"),
       changeFrequency: "yearly",
       priority: 0.3,
     },

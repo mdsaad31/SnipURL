@@ -1,7 +1,8 @@
 import { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click";
+  // Normalize base URL by removing any trailing slash
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click").replace(/\/$/, "");
 
   return {
     rules: [
@@ -13,10 +14,6 @@ export default function robots(): MetadataRoute.Robots {
           "/dashboard/*",
           "/api/",
           "/api/*",
-          "/sign-in",
-          "/sign-in/*",
-          "/sign-up",
-          "/sign-up/*",
           "/_next/",
         ],
       },
