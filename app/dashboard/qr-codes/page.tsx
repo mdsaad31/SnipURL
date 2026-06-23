@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { Search } from "lucide-react";
+import { Search, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { useLinks } from "../_hooks/use-links";
+import type { LinkData } from "../_hooks/use-links";
 import { QrCard } from "../_components/qr-card";
+import { QrCustomizer } from "../_components/qr-customizer";
 
 function QrCodesContent() {
   const { links, loading } = useLinks();
   const [searchQuery, setSearchQuery] = useState("");
+  const [customizingLink, setCustomizingLink] = useState<LinkData | null>(null);
 
   const filteredLinks = links.filter((link) => {
     if (!searchQuery.trim()) return true;
@@ -23,9 +26,12 @@ function QrCodesContent() {
     <div className="flex flex-col gap-6 pb-10 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="font-sans font-medium text-[22px] text-text-primary">
-          QR Codes
-        </h1>
+        <div>
+          <h1 className="font-sans font-medium text-[22px] text-text-primary">QR Codes</h1>
+          <p className="text-sm text-text-secondary mt-0.5">
+            Customize, download, and share QR codes for all your links
+          </p>
+        </div>
       </div>
 
       {/* Search */}
@@ -65,7 +71,18 @@ function QrCodesContent() {
       ) : filteredLinks.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredLinks.map((link) => (
-            <QrCard key={link.id} link={link} />
+            <div key={link.id} className="flex flex-col gap-0 bg-surface border border-border rounded-card shadow-sm overflow-hidden hover:border-primary/40 transition-all group">
+              <QrCard link={link} />
+              <div className="px-4 pb-4 pt-0">
+                <button
+                  onClick={() => setCustomizingLink(link)}
+                  className="w-full flex items-center justify-center gap-2 py-2 border border-dashed border-primary/30 hover:border-primary hover:bg-[#FDF3E7] text-primary text-sm font-medium rounded-btn transition-all"
+                >
+                  <Settings2 className="w-3.5 h-3.5" />
+                  Customize & Share
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       ) : links.length > 0 ? (
@@ -106,6 +123,15 @@ function QrCodesContent() {
             Create a link
           </Link>
         </div>
+      )}
+
+      {/* QR Customizer Modal */}
+      {customizingLink && (
+        <QrCustomizer
+          shortCode={customizingLink.short_code}
+          title={customizingLink.title}
+          onClose={() => setCustomizingLink(null)}
+        />
       )}
     </div>
   );

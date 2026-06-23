@@ -3,8 +3,18 @@ import { NextResponse } from "next/server";
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
-// Public pages that should NOT be treated as short codes
-const publicPages = ["/pricing", "/about", "/contact", "/blog", "/terms", "/privacy", "/termsofservice", "/privacystatement"];
+// Public pages that should NOT be treated as short codes.
+// Keep in sync with RESERVED_WORDS in lib/short-code.ts and the
+// startsWith checks below.
+const publicPagePrefixes = [
+  "/analytics",
+  "/qr",
+];
+
+const publicPages = [
+  "/pricing", "/about", "/contact", "/blog", "/terms", "/privacy",
+  "/termsofservice", "/privacystatement",
+];
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
@@ -21,6 +31,7 @@ export default clerkMiddleware(async (auth, req) => {
     !url.pathname.startsWith("/dashboard") &&
     !url.pathname.startsWith("/sign-") &&
     !url.pathname.startsWith("/_next") &&
+    !publicPagePrefixes.some((prefix) => url.pathname.startsWith(prefix)) &&
     !publicPages.includes(url.pathname) &&
     !url.pathname.match(/\.[^/]+$/) // Not a static file
   ) {

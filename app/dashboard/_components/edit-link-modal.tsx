@@ -20,10 +20,7 @@ export function EditLinkModal({ link, onClose, onSuccess }: EditLinkModalProps) 
   const [clearExpiry, setClearExpiry] = useState(false);
   const [error, setError] = useState("");
 
-  const { editLink, loading } = useEditLink(() => {
-    onClose();
-    onSuccess();
-  });
+  const { editLink, loading } = useEditLink();
 
   const domain =
     process.env.NEXT_PUBLIC_APP_URL?.replace("https://", "").replace(
@@ -94,11 +91,14 @@ export function EditLinkModal({ link, onClose, onSuccess }: EditLinkModalProps) 
 
       const result = await editLink(link.id, payload);
 
-      if (!result) {
+      if (result) {
+        onClose();
+        onSuccess();
+      } else {
         setError("Failed to update link. Please try again.");
       }
     },
-    [link, title, password, removePassword, expiresAt, clearExpiry, editLink]
+    [link, title, password, removePassword, expiresAt, clearExpiry, editLink, onClose, onSuccess]
   );
 
   if (!link) return null;

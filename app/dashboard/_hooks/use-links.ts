@@ -13,12 +13,15 @@ export interface LinkData {
   is_active: boolean;
   password_hash: string | null;
   expires_at: string | null;
+  analytics_public: boolean;
+  analytics_shared_fields: string | null;
   created_at: string;
   updated_at: string;
 }
 
 interface UseLinksReturn {
   links: LinkData[];
+  setLinks: React.Dispatch<React.SetStateAction<LinkData[]>>;
   loading: boolean;
   error: string | null;
   mutate: () => Promise<void>;
@@ -50,7 +53,7 @@ export function useLinks(): UseLinksReturn {
     mutate();
   }, [mutate]);
 
-  return { links, loading, error, mutate };
+  return { links, setLinks, loading, error, mutate };
 }
 
 interface CreateLinkPayload {
@@ -59,13 +62,14 @@ interface CreateLinkPayload {
   title?: string;
   password?: string;
   expiresAt?: string;
+  turnstileToken?: string;
 }
 
-export function useCreateLink(onSuccess?: () => void) {
+export function useCreateLink() {
   const [loading, setLoading] = useState(false);
 
   const createLink = useCallback(
-    async (payload: CreateLinkPayload) => {
+    async (payload: CreateLinkPayload): Promise<LinkData | null> => {
       setLoading(true);
       try {
         const res = await fetch("/api/links", {
@@ -76,7 +80,6 @@ export function useCreateLink(onSuccess?: () => void) {
         const data = await res.json();
         if (data.success) {
           toast.success("Link created successfully!");
-          onSuccess?.();
           return data.data as LinkData;
         } else {
           toast.error(data.error?.message || "Failed to create link");
@@ -89,37 +92,34 @@ export function useCreateLink(onSuccess?: () => void) {
         setLoading(false);
       }
     },
-    [onSuccess]
+    []
   );
 
   return { createLink, loading };
 }
 
-export function useDeleteLink(onSuccess?: () => void) {
+export function useDeleteLink() {
   const [loading, setLoading] = useState(false);
 
-  const deleteLink = useCallback(
-    async (id: string) => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/links/${id}`, {
-          method: "DELETE",
-        });
-        const data = await res.json();
-        if (data.success) {
-          toast.success("Link deleted successfully");
-          onSuccess?.();
-        } else {
-          toast.error(data.error?.message || "Failed to delete link");
-        }
-      } catch {
-        toast.error("Network error. Please try again.");
-      } finally {
-        setLoading(false);
+  const deleteLink = useCallback(async (id: string): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/links/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Link deleted successfully");
+        return true;
+      } else {
+        toast.error(data.error?.message || "Failed to delete link");
+        return false;
       }
-    },
-    [onSuccess]
-  );
+    } catch {
+      toast.error("Network error. Please try again.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   return { deleteLink, loading };
 }
@@ -129,13 +129,15 @@ export interface EditLinkPayload {
   password?: string | null;
   expiresAt?: string | null;
   is_active?: boolean;
+  analytics_public?: boolean;
+  analytics_shared_fields?: string | null;
 }
 
-export function useEditLink(onSuccess?: () => void) {
+export function useEditLink() {
   const [loading, setLoading] = useState(false);
 
   const editLink = useCallback(
-    async (id: string, payload: EditLinkPayload) => {
+    async (id: string, payload: EditLinkPayload): Promise<LinkData | null> => {
       setLoading(true);
       try {
         const res = await fetch(`/api/links/${id}`, {
@@ -146,7 +148,6 @@ export function useEditLink(onSuccess?: () => void) {
         const data = await res.json();
         if (data.success) {
           toast.success("Link updated successfully!");
-          onSuccess?.();
           return data.data as LinkData;
         } else {
           toast.error(data.error?.message || "Failed to update link");
@@ -159,7 +160,7 @@ export function useEditLink(onSuccess?: () => void) {
         setLoading(false);
       }
     },
-    [onSuccess]
+    []
   );
 
   return { editLink, loading };
@@ -168,65 +169,65 @@ export function useEditLink(onSuccess?: () => void) {
 export function useToggleLink() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  const toggleLink = useCallback(async (id: string, currentActive: boolean) => {
-    setLoadingId(id);
-    try {
-      const res = await fetch(`/api/links/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: !currentActive }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(
-          currentActive ? "Link deactivated" : "Link activated"
-        );
-        return data.data as LinkData;
-      } else {
-        toast.error(data.error?.message || "Failed to update link");
+  const toggleLink = useCallback(
+    async (id: string, currentActive: boolean): Promise<LinkData | null> => {
+      setLoadingId(id);
+      try {
+        const res = await fetch(`/api/links/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_active: !currentActive }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          toast.success(currentActive ? "Link deactivated" : "Link activated");
+          return data.data as LinkData;
+        } else {
+          toast.error(data.error?.message || "Failed to update link");
+          return null;
+        }
+      } catch {
+        toast.error("Network error. Please try again.");
         return null;
+      } finally {
+        setLoadingId(null);
       }
-    } catch {
-      toast.error("Network error. Please try again.");
-      return null;
-    } finally {
-      setLoadingId(null);
-    }
-  }, []);
+    },
+    []
+  );
 
   return { toggleLink, loadingId };
 }
 
-export function useBulkActions(onSuccess?: () => void) {
+export function useBulkActions() {
   const [loading, setLoading] = useState(false);
 
-  const bulkDelete = useCallback(
-    async (ids: string[]) => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/links/bulk", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          toast.success(`${data.data.deleted} link(s) deleted`);
-          onSuccess?.();
-        } else {
-          toast.error(data.error?.message || "Failed to delete links");
-        }
-      } catch {
-        toast.error("Network error. Please try again.");
-      } finally {
-        setLoading(false);
+  const bulkDelete = useCallback(async (ids: string[]): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/links/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`${data.data.deleted} link(s) deleted`);
+        return true;
+      } else {
+        toast.error(data.error?.message || "Failed to delete links");
+        return false;
       }
-    },
-    [onSuccess]
-  );
+    } catch {
+      toast.error("Network error. Please try again.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const bulkToggle = useCallback(
-    async (ids: string[], active: boolean) => {
+    async (ids: string[], active: boolean): Promise<boolean> => {
       setLoading(true);
       try {
         const res = await fetch("/api/links/bulk", {
@@ -239,19 +240,20 @@ export function useBulkActions(onSuccess?: () => void) {
           toast.success(
             `${data.data.updated} link(s) ${active ? "activated" : "deactivated"}`
           );
-          onSuccess?.();
+          return true;
         } else {
           toast.error(data.error?.message || "Failed to update links");
+          return false;
         }
       } catch {
         toast.error("Network error. Please try again.");
+        return false;
       } finally {
         setLoading(false);
       }
     },
-    [onSuccess]
+    []
   );
 
   return { bulkDelete, bulkToggle, loading };
 }
-

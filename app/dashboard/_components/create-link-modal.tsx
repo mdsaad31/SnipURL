@@ -24,10 +24,7 @@ function CreateLinkModalContent({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState("");
 
-  const { createLink, loading } = useCreateLink(() => {
-    close();
-    onSuccess();
-  });
+  const { createLink, loading } = useCreateLink();
 
   const domain =
     process.env.NEXT_PUBLIC_APP_URL?.replace("https://", "").replace(
@@ -75,7 +72,10 @@ function CreateLinkModalContent({
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
     });
 
-    if (!result) {
+    if (result) {
+      close();
+      onSuccess();
+    } else {
       setError("Failed to create link. Please check your URL and try again.");
     }
   };
@@ -108,6 +108,7 @@ function CreateLinkModalContent({
           <form
             id="create-link"
             onSubmit={handleSubmit}
+            autoComplete="off"
             className="flex flex-col gap-6"
           >
             {error && (
@@ -162,6 +163,8 @@ function CreateLinkModalContent({
               </label>
               <input
                 type="text"
+                name="link-title"
+                autoComplete="off"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="My awesome link"
@@ -194,6 +197,8 @@ function CreateLinkModalContent({
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
+                      name="link-password"
+                      autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Optional password protection"

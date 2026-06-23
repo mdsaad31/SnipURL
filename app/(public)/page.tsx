@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Zap, BarChart2, QrCode, Shield, ArrowRight, Scissors, MousePointer2, ChartNoAxesCombined } from "lucide-react";
+import { Zap, BarChart2, QrCode, Shield, ArrowRight, Scissors, MousePointer2, ChartNoAxesCombined, Globe } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "./_components/navbar";
@@ -160,6 +160,28 @@ export default function HomePage() {
               Edge-powered speed
             </div>
           </div>
+        </section>
+
+        {/* ── Live Platform Analytics Strip ─────────────────────────── */}
+        <section aria-label="Platform analytics" className="w-full max-w-[680px] mx-auto px-4 pb-10">
+          <Link
+            href="/analytics"
+            className="group flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-[#1A1410] to-[#2A2018] border border-[#3D352C] rounded-[16px] px-6 py-5 hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <Globe className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <p className="text-white font-medium text-sm">Live Platform Analytics</p>
+                <p className="text-white/50 text-xs mt-0.5">See real-time clicks, countries &amp; device stats across all Snip links</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-btn text-sm font-medium transition-colors shrink-0 group-hover:bg-primary group-hover:text-white">
+              View stats
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Link>
         </section>
 
         {/* How it Works */}

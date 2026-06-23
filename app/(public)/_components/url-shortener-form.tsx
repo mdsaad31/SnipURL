@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { Copy, Download, Share2, Check, Lock } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Copy, Download, Share2, Check, Lock, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 
 interface ShortenResult {
   short_code: string;
+}
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement | string, opts: object) => string;
+      reset: (widgetId: string) => void;
+      getResponse: (widgetId: string) => string | undefined;
+      remove: (widgetId: string) => void;
+    };
+  }
 }
 
 export function UrlShortenerForm() {
@@ -18,6 +29,9 @@ export function UrlShortenerForm() {
   const [result, setResult] = useState<ShortenResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string>("");
 
   const domain =
     process.env.NEXT_PUBLIC_APP_URL?.replace("https://", "").replace(
@@ -25,19 +39,70 @@ export function UrlShortenerForm() {
       ""
     ) || "snipurl.click";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click";
+  const siteKey = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || "";
+
+  // ── Load Turnstile script for anonymous users ────────────────────
+  useEffect(() => {
+    if (isSignedIn || !siteKey) return;
+
+    const scriptId = "cf-turnstile-script";
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+
+    const renderWidget = () => {
+      if (window.turnstile && turnstileRef.current && !widgetIdRef.current) {
+        widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+          sitekey: siteKey,
+          theme: "light",
+          size: "normal",
+          callback: (token: string) => setTurnstileToken(token),
+          "expired-callback": () => setTurnstileToken(""),
+          "error-callback": () => setTurnstileToken(""),
+        });
+      }
+    };
+
+    // Render when ready
+    const interval = setInterval(() => {
+      if (window.turnstile) {
+        clearInterval(interval);
+        renderWidget();
+      }
+    }, 200);
+
+    return () => {
+      clearInterval(interval);
+      if (window.turnstile && widgetIdRef.current) {
+        window.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = "";
+      }
+    };
+  }, [isSignedIn, siteKey]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return;
+
+    // Require Turnstile for anonymous users
+    if (!isSignedIn && !turnstileToken) {
+      setError("Please complete the security challenge before shortening.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     setResult(null);
 
     try {
       const body: Record<string, string> = { url };
-      if (customAlias && isSignedIn) {
-        body.customAlias = customAlias;
-      }
+      if (customAlias && isSignedIn) body.customAlias = customAlias;
+      if (!isSignedIn && turnstileToken) body.turnstileToken = turnstileToken;
 
       const res = await fetch("/api/links", {
         method: "POST",
@@ -49,10 +114,19 @@ export function UrlShortenerForm() {
       if (data.success) {
         setResult({ short_code: data.data.short_code });
         toast.success("Link shortened successfully!");
+        // Reset Turnstile for next use
+        if (window.turnstile && widgetIdRef.current) {
+          window.turnstile.reset(widgetIdRef.current);
+          setTurnstileToken("");
+        }
       } else {
         const msg = data.error?.message || "Something went wrong";
         setError(msg);
         toast.error(msg);
+        if (window.turnstile && widgetIdRef.current) {
+          window.turnstile.reset(widgetIdRef.current);
+          setTurnstileToken("");
+        }
       }
     } catch {
       setError("Network error. Please try again.");
@@ -78,10 +152,7 @@ export function UrlShortenerForm() {
   const handleShare = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: "Snip Short Link",
-          url: shortUrl,
-        });
+        await navigator.share({ title: "Snip Short Link", url: shortUrl });
       } catch {
         // User cancelled share
       }
@@ -111,7 +182,7 @@ export function UrlShortenerForm() {
         />
         <button
           type="submit"
-          disabled={loading || !url}
+          disabled={loading || !url || (!isSignedIn && !turnstileToken)}
           className="absolute right-1.5 top-1.5 bottom-1.5 px-6 bg-primary hover:bg-primary-hover disabled:opacity-70 text-white font-medium rounded-btn transition-colors z-20 flex items-center justify-center min-w-[120px]"
         >
           {loading ? (
@@ -147,6 +218,17 @@ export function UrlShortenerForm() {
           </div>
         )}
       </div>
+
+      {/* Cloudflare Turnstile — anonymous users only */}
+      {!isSignedIn && siteKey && (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 text-xs text-text-tertiary mb-2">
+            <Shield className="w-3.5 h-3.5" />
+            <span>Complete the security check to shorten links</span>
+          </div>
+          <div ref={turnstileRef} />
+        </div>
+      )}
 
       {/* Error Message */}
       {error && (

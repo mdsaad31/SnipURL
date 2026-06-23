@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "../../../lib/db";
-import { links } from "../../../lib/db/schema";
+import { links, users } from "../../../lib/db/schema";
 import { getCurrentUser } from "../../../lib/auth";
 import { urlSchema, fetchUrlTitle } from "../../../lib/url-utils";
 import { createUniqueShortCode, isValidCustomAlias, isAliasAvailable } from "../../../lib/short-code";
@@ -12,9 +12,32 @@ import bcrypt from "bcryptjs";
 const createLinkSchema = z.object({
   url: urlSchema,
   customAlias: z.string().optional().nullable(),
+  title: z.string().optional().nullable(),
   password: z.string().optional().nullable(),
   expiresAt: z.string().datetime().optional().nullable(),
+  turnstileToken: z.string().optional().nullable(),
 });
+
+// ── Cloudflare Turnstile verification ────────────────────────────────
+async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
+  try {
+    const secret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
+    if (!secret) return true; // skip in dev if key not set
+    const formData = new URLSearchParams();
+    formData.append("secret", secret);
+    formData.append("response", token);
+    formData.append("remoteip", ip);
+
+    const res = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      { method: "POST", body: formData }
+    );
+    const data = await res.json();
+    return data.success === true;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET() {
   try {
@@ -53,10 +76,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { url, customAlias, password, expiresAt } = parsed.data;
+    const { url, customAlias, password, expiresAt, turnstileToken } = parsed.data;
 
     // Get user (can be null for anonymous)
     const user = await getCurrentUser();
+
+    // ── Turnstile check for anonymous users ─────────────────────────
+    if (!user) {
+      const clientIp =
+        req.headers.get("cf-connecting-ip") ||
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        "unknown";
+
+      if (!turnstileToken) {
+        return NextResponse.json(
+          { success: false, error: { code: "CAPTCHA_REQUIRED", message: "Please complete the security challenge." } },
+          { status: 403 }
+        );
+      }
+      const isValid = await verifyTurnstile(turnstileToken, clientIp);
+      if (!isValid) {
+        return NextResponse.json(
+          { success: false, error: { code: "CAPTCHA_FAILED", message: "Security challenge failed. Please try again." } },
+          { status: 403 }
+        );
+      }
+    }
 
     let shortCode = "";
 
@@ -78,9 +123,10 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (!isValidCustomAlias(customAlias)) {
+      const aliasCheck = isValidCustomAlias(customAlias);
+      if (!aliasCheck.valid) {
         return NextResponse.json(
-          { success: false, error: { code: "INVALID_ALIAS", message: "Invalid custom alias. Use 3-50 alphanumeric characters or hyphens." } },
+          { success: false, error: { code: "INVALID_ALIAS", message: aliasCheck.reason || "Invalid custom alias." } },
           { status: 400 }
         );
       }
@@ -99,12 +145,28 @@ export async function POST(req: NextRequest) {
     }
 
     // Try to fetch title (non-blocking — falls back to URL)
-    const title = await fetchUrlTitle(url);
+    const fetchedTitle = await fetchUrlTitle(url);
+    const finalTitle = parsed.data.title?.trim() || fetchedTitle || url;
 
     // Hash password if provided
     let passwordHash: string | null = null;
     if (password) {
       passwordHash = await bcrypt.hash(password, 10);
+    }
+
+    // ── Default expiry from user settings ───────────────────────────
+    let resolvedExpiresAt: Date | null = expiresAt ? new Date(expiresAt) : null;
+    if (!resolvedExpiresAt && user) {
+      // Fetch user settings to apply default expiry
+      const dbUser = await db.query.users.findFirst({
+        where: eq(users.id, user.id),
+      });
+      if (dbUser?.default_expiry_hours) {
+        resolvedExpiresAt = new Date();
+        resolvedExpiresAt.setHours(
+          resolvedExpiresAt.getHours() + dbUser.default_expiry_hours
+        );
+      }
     }
 
     const [newLink] = await db
@@ -113,9 +175,9 @@ export async function POST(req: NextRequest) {
         original_url: url,
         short_code: shortCode,
         user_id: user?.id || null,
-        title: title || url,
+        title: finalTitle,
         password_hash: passwordHash,
-        expires_at: expiresAt ? new Date(expiresAt) : null,
+        expires_at: resolvedExpiresAt,
       })
       .returning();
 

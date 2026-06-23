@@ -27,6 +27,8 @@ export const links = pgTable("links", {
   is_active: boolean("is_active").default(true).notNull(),
   password_hash: varchar("password_hash", { length: 255 }),
   expires_at: timestamp("expires_at"),
+  analytics_public: boolean("analytics_public").default(false).notNull(),
+  analytics_shared_fields: text("analytics_shared_fields"), // JSON array of visible sections
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });

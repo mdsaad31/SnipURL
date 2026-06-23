@@ -14,15 +14,27 @@ import type { LinkData } from "./_hooks/use-links";
 function DashboardContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { links, loading, mutate } = useLinks();
-  const { deleteLink } = useDeleteLink(mutate);
+  const { links, setLinks, loading, mutate } = useLinks();
+  const { deleteLink } = useDeleteLink();
   const { toggleLink } = useToggleLink();
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
 
+  const handleDelete = async (id: string) => {
+    const prev = links;
+    setLinks((cur) => cur.filter((l) => l.id !== id));
+    const ok = await deleteLink(id);
+    if (!ok) setLinks(prev);
+  };
+
   const handleToggle = async (id: string, currentActive: boolean) => {
+    setLinks((cur) =>
+      cur.map((l) => (l.id === id ? { ...l, is_active: !currentActive } : l))
+    );
     const result = await toggleLink(id, currentActive);
-    if (result) {
-      mutate();
+    if (!result) {
+      setLinks((cur) =>
+        cur.map((l) => (l.id === id ? { ...l, is_active: currentActive } : l))
+      );
     }
   };
 
@@ -80,7 +92,7 @@ function DashboardContent() {
               <LinkCard
                 key={link.id}
                 link={link}
-                onDelete={deleteLink}
+                onDelete={handleDelete}
                 onToggle={handleToggle}
                 onEdit={setEditingLink}
               />

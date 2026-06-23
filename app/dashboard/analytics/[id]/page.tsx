@@ -12,6 +12,13 @@ import {
   Download,
   Laptop,
   AppWindow,
+  Share2,
+  Check,
+  Lock,
+  Unlock,
+  Eye,
+  EyeOff,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -69,6 +76,16 @@ interface StatsData {
   browsers: BrowserEntry[];
   os: OsEntry[];
 }
+
+const ALL_SHARE_FIELDS = [
+  { id: "clicks", label: "Total Clicks" },
+  { id: "trend", label: "Click Trend" },
+  { id: "countries", label: "Countries" },
+  { id: "devices", label: "Devices" },
+  { id: "browsers", label: "Browsers" },
+  { id: "referrers", label: "Referrers" },
+  { id: "os", label: "Operating Systems" },
+];
 
 // ISO 3166-1 alpha-2 → country name (common ones)
 const COUNTRY_NAMES: Record<string, string> = {
@@ -131,6 +148,15 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState("all");
 
+  // ── Share Analytics state ─────────────────────────────────────
+  const [shareOpen, setShareOpen] = useState(false);
+  const [analyticsPublic, setAnalyticsPublic] = useState(false);
+  const [sharedFields, setSharedFields] = useState<string[]>(ALL_SHARE_FIELDS.map((f) => f.id));
+  const [savingShare, setSavingShare] = useState(false);
+  const [copiedShareUrl, setCopiedShareUrl] = useState(false);
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click";
+
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
@@ -143,6 +169,19 @@ export default function AnalyticsPage() {
       const result = await res.json();
       if (result.success) {
         setData(result.data);
+        // Sync share state from link data
+        const linkData = result.data.link as LinkInfo & {
+          analytics_public?: boolean;
+          analytics_shared_fields?: string | null;
+        };
+        if (linkData.analytics_public !== undefined) {
+          setAnalyticsPublic(linkData.analytics_public);
+        }
+        if (linkData.analytics_shared_fields) {
+          try {
+            setSharedFields(JSON.parse(linkData.analytics_shared_fields));
+          } catch { /* use default */ }
+        }
       } else {
         setError(result.error?.message || "Failed to load analytics");
       }
@@ -162,7 +201,56 @@ export default function AnalyticsPage() {
       "http://",
       ""
     ) || "snipurl.click";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click";
+
+  // ── Save share settings ───────────────────────────────────────
+  const handleSaveShare = async (isPublic: boolean, fields: string[]) => {
+    setSavingShare(true);
+    try {
+      const res = await fetch(`/api/links/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          analytics_public: isPublic,
+          analytics_shared_fields: JSON.stringify(fields),
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(isPublic ? "Analytics are now public!" : "Analytics set to private");
+      } else {
+        toast.error(result.error?.message || "Failed to save settings");
+      }
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setSavingShare(false);
+    }
+  };
+
+  const handleTogglePublic = async (val: boolean) => {
+    setAnalyticsPublic(val);
+    await handleSaveShare(val, sharedFields);
+  };
+
+  const handleFieldToggle = (fieldId: string) => {
+    const next = sharedFields.includes(fieldId)
+      ? sharedFields.filter((f) => f !== fieldId)
+      : [...sharedFields, fieldId];
+    setSharedFields(next);
+  };
+
+  const handleSaveFields = async () => {
+    await handleSaveShare(analyticsPublic, sharedFields);
+  };
+
+  const handleCopyShareUrl = async () => {
+    if (!data) return;
+    const shareUrl = `${appUrl}/analytics/${data.link.short_code}`;
+    await navigator.clipboard.writeText(shareUrl);
+    setCopiedShareUrl(true);
+    toast.success("Share URL copied!");
+    setTimeout(() => setCopiedShareUrl(false), 2000);
+  };
 
   const handleExportCSV = async () => {
     try {
@@ -346,6 +434,117 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Share Analytics Panel */}
+      <div className="bg-surface border border-border rounded-card shadow-sm overflow-hidden">
+        <button
+          onClick={() => setShareOpen(!shareOpen)}
+          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-[#F9F6F2] transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-[10px] bg-[#FDF3E7] flex items-center justify-center">
+              <Share2 className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium text-[14px] text-text-primary">Share Analytics</p>
+              <p className="text-xs text-text-secondary">
+                {analyticsPublic ? "Public — " + `${appUrl}/analytics/${data.link.short_code}` : "Private — share with anyone"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${analyticsPublic ? "bg-[#E6F4EE] text-[#2D6A5B]" : "bg-[#F5EFE6] text-text-tertiary"}`}>
+              {analyticsPublic ? "Public" : "Private"}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-text-tertiary transition-transform ${shareOpen ? "rotate-180" : ""}`} />
+          </div>
+        </button>
+
+        {shareOpen && (
+          <div className="px-5 pb-5 border-t border-border">
+            {/* Toggle public/private */}
+            <div className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-2">
+                {analyticsPublic ? <Unlock className="w-4 h-4 text-[#2D6A5B]" /> : <Lock className="w-4 h-4 text-text-tertiary" />}
+                <span className="text-sm font-medium text-text-primary">
+                  {analyticsPublic ? "Analytics are public" : "Analytics are private"}
+                </span>
+              </div>
+              <button
+                onClick={() => handleTogglePublic(!analyticsPublic)}
+                disabled={savingShare}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-60 ${
+                  analyticsPublic ? "bg-secondary" : "bg-[#D3C9BE]"
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  analyticsPublic ? "translate-x-5" : "translate-x-0"
+                }`} />
+              </button>
+            </div>
+
+            {analyticsPublic && (
+              <>
+                {/* Field toggles */}
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">Visible sections</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {ALL_SHARE_FIELDS.map(({ id: fid, label }) => {
+                      const active = sharedFields.includes(fid);
+                      return (
+                        <button
+                          key={fid}
+                          onClick={() => handleFieldToggle(fid)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-[8px] border text-sm transition-all ${
+                            active
+                              ? "bg-[#FDF3E7] border-primary/40 text-primary"
+                              : "bg-white border-border text-text-tertiary hover:border-border/60"
+                          }`}
+                        >
+                          {active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Save fields + Copy URL */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveFields}
+                    disabled={savingShare}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-btn text-sm transition-colors disabled:opacity-60"
+                  >
+                    {savingShare ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5" />
+                    )}
+                    Save settings
+                  </button>
+                  <button
+                    onClick={handleCopyShareUrl}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-white border border-border hover:border-primary text-text-secondary hover:text-primary rounded-btn text-sm transition-all font-medium"
+                  >
+                    {copiedShareUrl ? <Check className="w-3.5 h-3.5 text-secondary" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedShareUrl ? "Copied!" : "Copy share URL"}
+                  </button>
+                  <a
+                    href={`${appUrl}/analytics/${data.link.short_code}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-white border border-border hover:border-primary text-text-secondary hover:text-primary rounded-btn text-sm transition-all font-medium"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Preview
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Chart */}

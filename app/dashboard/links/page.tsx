@@ -21,21 +21,43 @@ const MAX_SELECTION = 50;
 function LinksContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { links, loading, mutate } = useLinks();
-  const { deleteLink } = useDeleteLink(mutate);
+  const { links, setLinks, loading, mutate } = useLinks();
+  const { deleteLink } = useDeleteLink();
   const { toggleLink } = useToggleLink();
-  const { bulkDelete, bulkToggle, loading: bulkLoading } = useBulkActions(mutate);
+  const { bulkDelete, bulkToggle, loading: bulkLoading } = useBulkActions();
   const [searchQuery, setSearchQuery] = useState("");
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const handleToggle = async (id: string, currentActive: boolean) => {
-    const result = await toggleLink(id, currentActive);
-    if (result) {
-      mutate();
-    }
-  };
+  // ── Optimistic delete ───────────────────────────────────────────
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const prev = links;
+      setLinks((cur) => cur.filter((l) => l.id !== id)); // instant
+      const ok = await deleteLink(id);
+      if (!ok) setLinks(prev); // rollback on failure
+    },
+    [links, setLinks, deleteLink]
+  );
+
+  // ── Optimistic toggle ───────────────────────────────────────────
+  const handleToggle = useCallback(
+    async (id: string, currentActive: boolean) => {
+      // Flip immediately
+      setLinks((cur) =>
+        cur.map((l) => (l.id === id ? { ...l, is_active: !currentActive } : l))
+      );
+      const result = await toggleLink(id, currentActive);
+      if (!result) {
+        // Rollback
+        setLinks((cur) =>
+          cur.map((l) => (l.id === id ? { ...l, is_active: currentActive } : l))
+        );
+      }
+    },
+    [setLinks, toggleLink]
+  );
 
   const createUrl = (() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -84,20 +106,34 @@ function LinksContent() {
       setTimeout(() => setShowDeleteConfirm(false), 3000);
       return;
     }
-    await bulkDelete(Array.from(selectedIds));
+    const ids = Array.from(selectedIds);
+    // Optimistic removal
+    setLinks((cur) => cur.filter((l) => !ids.includes(l.id)));
     setSelectedIds(new Set());
     setShowDeleteConfirm(false);
-  }, [showDeleteConfirm, bulkDelete, selectedIds]);
+    const ok = await bulkDelete(ids);
+    if (!ok) mutate(); // refetch on failure to restore
+  }, [showDeleteConfirm, bulkDelete, selectedIds, setLinks, mutate]);
 
   const handleBulkActivate = useCallback(async () => {
-    await bulkToggle(Array.from(selectedIds), true);
+    const ids = Array.from(selectedIds);
+    setLinks((cur) =>
+      cur.map((l) => (ids.includes(l.id) ? { ...l, is_active: true } : l))
+    );
     setSelectedIds(new Set());
-  }, [bulkToggle, selectedIds]);
+    const ok = await bulkToggle(ids, true);
+    if (!ok) mutate();
+  }, [bulkToggle, selectedIds, setLinks, mutate]);
 
   const handleBulkDeactivate = useCallback(async () => {
-    await bulkToggle(Array.from(selectedIds), false);
+    const ids = Array.from(selectedIds);
+    setLinks((cur) =>
+      cur.map((l) => (ids.includes(l.id) ? { ...l, is_active: false } : l))
+    );
     setSelectedIds(new Set());
-  }, [bulkToggle, selectedIds]);
+    const ok = await bulkToggle(ids, false);
+    if (!ok) mutate();
+  }, [bulkToggle, selectedIds, setLinks, mutate]);
 
   return (
     <div className="flex flex-col gap-6 pb-10 animate-in fade-in duration-300">
@@ -183,7 +219,7 @@ function LinksContent() {
               <div className="flex-1 min-w-0">
                 <LinkCard
                   link={link}
-                  onDelete={deleteLink}
+                  onDelete={handleDelete}
                   onToggle={handleToggle}
                   onEdit={setEditingLink}
                 />

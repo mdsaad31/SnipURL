@@ -11,6 +11,8 @@ const updateLinkSchema = z.object({
   is_active: z.boolean().optional(),
   password: z.string().nullable().optional(),
   expiresAt: z.string().datetime({ offset: true }).nullable().optional(),
+  analytics_public: z.boolean().optional(),
+  analytics_shared_fields: z.string().nullable().optional(), // JSON array
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -75,12 +77,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Expires_at handling
     if (parsed.data.expiresAt !== undefined) {
       if (parsed.data.expiresAt === null) {
-        // Explicitly null → clear expiry
         updateData.expires_at = null;
       } else {
-        // String → parse to Date
         updateData.expires_at = new Date(parsed.data.expiresAt);
       }
+    }
+
+    // Analytics sharing
+    if (parsed.data.analytics_public !== undefined) {
+      updateData.analytics_public = parsed.data.analytics_public;
+    }
+    if (parsed.data.analytics_shared_fields !== undefined) {
+      updateData.analytics_shared_fields = parsed.data.analytics_shared_fields;
     }
 
     // Update only the owned link (scoped by user_id for safety)

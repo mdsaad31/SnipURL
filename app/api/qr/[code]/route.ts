@@ -12,29 +12,53 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
 
     const url = `${env.NEXT_PUBLIC_APP_URL}/${code}`;
 
-    // Parse query parameters
-    const format = req.nextUrl.searchParams.get("format") || "png";
+    // ── Query parameters ─────────────────────────────────────────────
+    const sp = req.nextUrl.searchParams;
+    const format = sp.get("format") || "png";
 
-    const sizeParam = req.nextUrl.searchParams.get("size");
+    const sizeParam = sp.get("size");
     const size = sizeParam
-      ? Math.min(1000, Math.max(100, parseInt(sizeParam, 10) || 300))
-      : 300;
+      ? Math.min(1000, Math.max(100, parseInt(sizeParam, 10) || 400))
+      : 400;
 
-    const colorParam = req.nextUrl.searchParams.get("color");
-    const color =
-      colorParam && /^#[0-9a-fA-F]{6}$/.test(colorParam)
-        ? colorParam
+    // Foreground (dark modules)
+    const colorParam = sp.get("color");
+    const fgColor =
+      colorParam && /^#?[0-9a-fA-F]{6}$/.test(colorParam)
+        ? colorParam.startsWith("#") ? colorParam : `#${colorParam}`
         : "#1A1410";
+
+    // Background (light modules), default white; "transparent" → rgba(0,0,0,0)
+    const bgParam = sp.get("bg");
+    const transparent = bgParam === "transparent";
+    const bgColor = transparent
+      ? "#00000000"
+      : bgParam && /^#?[0-9a-fA-F]{6}$/.test(bgParam)
+      ? bgParam.startsWith("#") ? bgParam : `#${bgParam}`
+      : "#FFFFFF";
+
+    // Error correction level: L | M | Q | H
+    const ecParam = sp.get("ecLevel") || sp.get("ec") || "M";
+    const ecLevel = (["L", "M", "Q", "H"].includes(ecParam.toUpperCase())
+      ? ecParam.toUpperCase()
+      : "M") as "L" | "M" | "Q" | "H";
+
+    // Margin / quiet zone (0–4)
+    const marginParam = sp.get("margin");
+    const margin = marginParam
+      ? Math.min(4, Math.max(0, parseInt(marginParam, 10)))
+      : 2;
 
     if (format === "svg") {
       const svg = await QRCode.toString(url, {
         type: "svg",
         color: {
-          dark: color,
-          light: "#00000000",
+          dark: fgColor,
+          light: bgColor,
         },
-        margin: 1,
+        margin,
         width: size,
+        errorCorrectionLevel: ecLevel,
       });
 
       return new NextResponse(svg, {
@@ -47,11 +71,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
       const buffer = await QRCode.toBuffer(url, {
         type: "png",
         color: {
-          dark: color,
-          light: "#FDFAF5",
+          dark: fgColor,
+          light: transparent ? "#00000000" : bgColor,
         },
-        margin: 2,
+        margin,
         width: size,
+        errorCorrectionLevel: ecLevel,
       });
 
       return new NextResponse(new Uint8Array(buffer), {
