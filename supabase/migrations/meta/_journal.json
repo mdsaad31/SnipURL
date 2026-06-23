@@ -15,6 +15,13 @@
       "when": 1780730656814,
       "tag": "0001_add_user_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782227372430,
+      "tag": "0002_sudden_the_enforcers",
+      "breakpoints": true
     }
   ]
 }

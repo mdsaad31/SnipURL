@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -14,6 +14,13 @@ function PublicQrContent() {
   const [copied, setCopied] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete) {
+      setImageLoaded(true);
+    }
+  }, [qrUrl]);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click";
   const domain = appUrl.replace("https://", "").replace("http://", "");
@@ -131,6 +138,7 @@ function PublicQrContent() {
               ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
+                  ref={imgRef}
                   src={qrUrl}
                   alt={`QR code for ${shortUrl}`}
                   width={240}
