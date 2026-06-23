@@ -16,12 +16,6 @@ function PublicQrContent() {
   const [imageError, setImageError] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  useEffect(() => {
-    if (imgRef.current && imgRef.current.complete) {
-      setImageLoaded(true);
-    }
-  }, [qrUrl]);
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://snipurl.click";
   const domain = appUrl.replace("https://", "").replace("http://", "");
   const shortUrl = `${appUrl}/${code}`;
@@ -36,6 +30,12 @@ function PublicQrContent() {
   // Build QR API URL with the customization params
   const qrParams = new URLSearchParams({ color: fg, bg, ecLevel: ec, margin, size: "400" });
   const qrUrl = `/api/qr/${code}?${qrParams.toString()}`;
+
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete) {
+      setImageLoaded(true);
+    }
+  }, [qrUrl]);
 
   // High-res download URL
   const buildDownloadUrl = (format: "png" | "svg") => {
