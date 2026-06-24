@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Link as LinkIcon,
   QrCode,
+  Key,
   Settings,
   UserCircle,
   ChevronLeft,
@@ -19,6 +20,7 @@ const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Links", href: "/dashboard/links", icon: LinkIcon },
   { label: "QR Codes", href: "/dashboard/qr-codes", icon: QrCode },
+  { label: "API Keys", href: "/dashboard/api-keys", icon: Key },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 

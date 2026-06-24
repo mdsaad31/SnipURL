@@ -14,6 +14,7 @@ export const users = pgTable("users", {
 
 export const usersRelations = relations(users, ({ many }) => ({
   links: many(links),
+  apiKeys: many(apiKeys),
 }));
 
 // ─── Links ──────────────────────────────────────────────────────────
@@ -60,5 +61,27 @@ export const clicksRelations = relations(clicks, ({ one }) => ({
   link: one(links, {
     fields: [clicks.link_id],
     references: [links.id],
+  }),
+}));
+
+// ─── API Keys ───────────────────────────────────────────────────────
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+  user_id: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  key_prefix: varchar("key_prefix", { length: 20 }).notNull(),
+  key_hash: varchar("key_hash", { length: 64 }).notNull(),
+  last_used_at: timestamp("last_used_at"),
+  expires_at: timestamp("expires_at"),
+  is_revoked: boolean("is_revoked").default(false).notNull(),
+  rate_limit_per_minute: integer("rate_limit_per_minute").default(60).notNull(),
+  rate_limit_per_hour: integer("rate_limit_per_hour").default(1000).notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [apiKeys.user_id],
+    references: [users.id],
   }),
 }));
