@@ -170,6 +170,10 @@ export default function ApiKeysPage() {
             <p className="mt-2">
               Rate limits: <strong>60 requests/min</strong>, <strong>1,000 requests/hr</strong> per key.
               All endpoints are under <code className="bg-white px-1 py-0.5 rounded text-xs border border-border">/api/v1/</code>.
+              {" "}
+              <a href="https://docs.snipurl.click" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                View API Docs &rarr;
+              </a>
             </p>
           </div>
         </div>
