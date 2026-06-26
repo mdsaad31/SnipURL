@@ -46,7 +46,7 @@ export function Navbar() {
             <>
               <Link
                 href="/dashboard"
-                className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-primary transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-primary transition-colors"
               >
                 Dashboard
               </Link>
