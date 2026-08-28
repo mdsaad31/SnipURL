@@ -4,6 +4,16 @@ import { links } from "../../../../lib/db/schema";
 import { logClick } from "../../../../lib/analytics";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
+import { getClientIp, rateLimit, rateLimitHeaders } from "../../../../lib/rate-limit";
+
+const passwordSchema = z.object({
+  password: z.string().min(1).max(128),
+});
+
+function isLinkUnavailable(link: { is_active: boolean; expires_at: Date | null }): boolean {
+  return !link.is_active || (link.expires_at !== null && link.expires_at <= new Date());
+}
 
 function buildBrandedErrorPage(title: string, message: string, type: "expired" | "deactivated"): string {
   const iconColor = type === "expired" ? "#C17A2E" : "#B84040";
@@ -151,27 +161,12 @@ function getCountryFromHeaders(req: NextRequest): string | undefined {
   const awsCountry = req.headers.get("cloudfront-viewer-country");
   if (awsCountry) return awsCountry;
 
-  // Forwarded from middleware (middleware has access to req.geo on edge)
-  const geoCountry = req.headers.get("x-geo-country");
-  if (geoCountry && geoCountry !== "XX") return geoCountry;
-
-  // Next.js geo (available in some environments)
-  const geo = req.geo;
-  if (geo?.country && geo.country !== "XX") return geo.country;
-
   return undefined;
 }
 
 function getCityFromHeaders(req: NextRequest): string | undefined {
   const vercelCity = req.headers.get("x-vercel-ip-city");
   if (vercelCity) return decodeURIComponent(vercelCity);
-
-  // Forwarded from middleware
-  const geoCity = req.headers.get("x-geo-city");
-  if (geoCity) return decodeURIComponent(geoCity);
-
-  const geo = req.geo;
-  if (geo?.city) return geo.city;
 
   return undefined;
 }
@@ -218,15 +213,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
     const country = getCountryFromHeaders(req);
     const city = getCityFromHeaders(req);
 
-    // Fire-and-forget analytics
-    logClick({
+    // logClick handles its own failures, so awaiting it preserves analytics
+    // durability without turning a database problem into a redirect failure.
+    await logClick({
       linkId: link.id,
       ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown",
       userAgentStr: req.headers.get("user-agent") || "",
       referrer: req.headers.get("referer") || "",
       country,
       city,
-    }).catch(console.error);
+    });
 
     // 302 temporary redirect — allows link updates/deactivation to take effect
     return NextResponse.redirect(link.original_url, 302);
@@ -240,10 +236,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
 export async function POST(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   try {
     const { code } = await params;
-    const body = await req.json();
-    const { password } = body;
+    const limit = rateLimit(`protected-link:${code}:${getClientIp(req)}`, {
+      limit: 10,
+      windowMs: 15 * 60_000,
+    });
 
-    if (!password) {
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "Too many password attempts. Please try again later." },
+        { status: 429, headers: rateLimitHeaders(limit) }
+      );
+    }
+
+    const parsed = passwordSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return NextResponse.json({ error: "Password required" }, { status: 400 });
     }
 
@@ -255,7 +261,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
-    const isValid = await bcrypt.compare(password, link.password_hash);
+    // Password verification must not become a backdoor around a link owner's
+    // deactivation or expiry settings.
+    if (isLinkUnavailable(link)) {
+      return NextResponse.json({ error: "Link is unavailable" }, { status: 410 });
+    }
+
+    const isValid = await bcrypt.compare(parsed.data.password, link.password_hash);
     if (!isValid) {
       return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
     }
@@ -263,15 +275,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
     const country = getCountryFromHeaders(req);
     const city = getCityFromHeaders(req);
 
-    // Log click and return the original URL for client-side redirect
-    logClick({
+    // Log before returning the URL so serverless runtimes cannot terminate the
+    // work after the response has been sent.
+    await logClick({
       linkId: link.id,
       ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown",
       userAgentStr: req.headers.get("user-agent") || "",
       referrer: req.headers.get("referer") || "",
       country,
       city,
-    }).catch(console.error);
+    });
 
     return NextResponse.json({ url: link.original_url });
   } catch (error) {

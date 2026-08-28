@@ -15,6 +15,13 @@
       "when": 1780730656814,
       "tag": "0001_add_user_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787241936549,
+      "tag": "0002_harden_link_lifecycle_and_analytics",
+      "breakpoints": true
     }
   ]
 }

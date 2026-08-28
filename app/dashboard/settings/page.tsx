@@ -50,7 +50,6 @@ export default function SettingsPage() {
   // Form state
   const [expiryPreset, setExpiryPreset] = useState<string>("");
   const [customExpiryHours, setCustomExpiryHours] = useState<string>("");
-  const [linkLimit, setLinkLimit] = useState<string>("500");
 
   // Computed effective expiry value
   const effectiveExpiryHours =
@@ -64,7 +63,6 @@ export default function SettingsPage() {
       const data = await res.json();
       if (data.success) {
         setSettings(data.data);
-        setLinkLimit(data.data.link_limit?.toString() || "500");
 
         // Map existing value to preset
         const hours = data.data.default_expiry_hours?.toString() || "";
@@ -110,14 +108,6 @@ export default function SettingsPage() {
         return;
       }
       payload.default_expiry_hours = expiryNum;
-
-      const limitNum = parseInt(linkLimit, 10);
-      if (isNaN(limitNum) || limitNum < 10 || limitNum > 10000) {
-        toast.error("Link limit must be between 10 and 10,000");
-        setSaving(false);
-        return;
-      }
-      payload.link_limit = limitNum;
 
       const res = await fetch("/api/settings", {
         method: "PATCH",
@@ -328,28 +318,15 @@ export default function SettingsPage() {
 
               {/* Link Limit */}
               <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="linkLimit"
-                  className="flex items-center gap-2 font-sans font-medium text-[13px] text-text-primary"
-                >
+                <div className="flex items-center gap-2 font-sans font-medium text-[13px] text-text-primary">
                   <Link2 className="w-3.5 h-3.5 text-text-tertiary" />
                   Maximum link limit
-                </label>
-                <div className="flex items-center gap-3 max-w-[340px]">
-                  <input
-                    id="linkLimit"
-                    type="number"
-                    min={10}
-                    max={10000}
-                    step={10}
-                    value={linkLimit}
-                    onChange={(e) => setLinkLimit(e.target.value)}
-                    className="w-[120px] h-[44px] px-3 bg-white border-[1.5px] border-border rounded-btn focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none text-sm text-text-primary transition-all"
-                  />
-                  <span className="text-sm text-text-secondary">links maximum</span>
+                </div>
+                <div className="h-[44px] max-w-[340px] px-3 bg-[#F5EFE6] border border-border rounded-btn flex items-center text-sm text-text-secondary">
+                  {settings?.link_limit ?? 500} links maximum
                 </div>
                 <p className="text-[12px] text-text-tertiary pl-5">
-                  Allowed range: 10 – 10,000 links.
+                  Your link allowance is managed by your plan.
                 </p>
               </div>
             </div>

@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { env } from "../../../../lib/env";
+import { getClientIp, rateLimit, rateLimitHeaders } from "../../../../lib/rate-limit";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   try {
     const { code } = await params;
+    const limit = rateLimit(`qr:${getClientIp(req)}`, { limit: 120, windowMs: 60_000 });
+
+    if (!limit.allowed) {
+      return new NextResponse("Too many QR code requests", {
+        status: 429,
+        headers: rateLimitHeaders(limit),
+      });
+    }
 
     if (!code || code.length < 3) {
       return new NextResponse("Invalid code", { status: 400 });
     }
 
-    const url = `${env.NEXT_PUBLIC_APP_URL}/${code}`;
+    const url = `${env.NEXT_PUBLIC_APP_URL}/${encodeURIComponent(code)}`;
 
     // Parse query parameters
     const format = req.nextUrl.searchParams.get("format") || "png";

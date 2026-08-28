@@ -103,7 +103,7 @@ export function EditLinkModal({ link, onClose, onSuccess }: EditLinkModalProps) 
 
   if (!link) return null;
 
-  const hasPassword = !!link.password_hash;
+  const hasPassword = link.has_password;
   const hasExpiry = !!link.expires_at;
 
   return (

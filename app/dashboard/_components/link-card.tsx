@@ -91,7 +91,7 @@ export function LinkCard({ link, onDelete, onToggle, onEdit }: LinkCardProps) {
         >
           {domain}/{link.short_code}
         </button>
-        {link.password_hash && (
+        {link.has_password && (
           <span title="Password protected">
             <Lock className="w-3 h-3 text-primary/70 shrink-0" />
           </span>

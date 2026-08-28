@@ -1,20 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "../../../lib/db";
-import { links } from "../../../lib/db/schema";
+import { links, users } from "../../../lib/db/schema";
 import { getCurrentUser } from "../../../lib/auth";
-import { urlSchema, fetchUrlTitle } from "../../../lib/url-utils";
+import { urlSchema } from "../../../lib/url-utils";
 import { createUniqueShortCode, isValidCustomAlias, isAliasAvailable } from "../../../lib/short-code";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { getClientIp, rateLimit, rateLimitHeaders } from "../../../lib/rate-limit";
+import { toLinkResponse } from "../../../lib/link-response";
 
 const createLinkSchema = z.object({
   url: urlSchema,
   customAlias: z.string().optional().nullable(),
-  password: z.string().optional().nullable(),
-  expiresAt: z.string().datetime().optional().nullable(),
+  password: z.string().max(128, "Password must be 128 characters or fewer").optional().nullable(),
+  expiresAt: z.string().datetime({ offset: true }).optional().nullable(),
 });
+
+class LinkLimitReachedError extends Error {
+  constructor() {
+    super("LINK_LIMIT_REACHED");
+  }
+}
 
 export async function GET() {
   try {
@@ -31,7 +39,7 @@ export async function GET() {
       orderBy: [desc(links.created_at)],
     });
 
-    return NextResponse.json({ success: true, data: userLinks });
+    return NextResponse.json({ success: true, data: userLinks.map(toLinkResponse) });
   } catch (error) {
     console.error("GET /api/links error:", error);
     return NextResponse.json(
@@ -43,6 +51,19 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    const limit = rateLimit(
+      `link-create:${userId || getClientIp(req)}`,
+      userId ? { limit: 60, windowMs: 15 * 60_000 } : { limit: 10, windowMs: 60 * 60_000 }
+    );
+
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "Too many link creation requests. Please try again later." } },
+        { status: 429, headers: rateLimitHeaders(limit) }
+      );
+    }
+
     const body = await req.json();
     const parsed = createLinkSchema.safeParse(body);
 
@@ -62,8 +83,6 @@ export async function POST(req: NextRequest) {
 
     // Handle custom alias — requires authentication
     if (customAlias) {
-      const { userId } = await auth();
-
       if (!userId) {
         return NextResponse.json(
           { success: false, error: { code: "UNAUTHORIZED", message: "Clerk auth failed. Please sign in again." } },
@@ -98,29 +117,56 @@ export async function POST(req: NextRequest) {
       shortCode = await createUniqueShortCode();
     }
 
-    // Try to fetch title (non-blocking — falls back to URL)
-    const title = await fetchUrlTitle(url);
-
     // Hash password if provided
     let passwordHash: string | null = null;
     if (password) {
       passwordHash = await bcrypt.hash(password, 10);
     }
 
-    const [newLink] = await db
-      .insert(links)
-      .values({
-        original_url: url,
-        short_code: shortCode,
-        user_id: user?.id || null,
-        title: title || url,
-        password_hash: passwordHash,
-        expires_at: expiresAt ? new Date(expiresAt) : null,
-      })
-      .returning();
+    const resolvedExpiry = expiresAt
+      ? new Date(expiresAt)
+      : user?.default_expiry_hours
+        ? new Date(Date.now() + user.default_expiry_hours * 60 * 60 * 1000)
+        : null;
 
-    return NextResponse.json({ success: true, data: newLink });
+    const [newLink] = await db.transaction(async (tx) => {
+      if (user) {
+        // Serialize creations per user so concurrent requests cannot exceed
+        // the configured quota between a count and insert.
+        await tx.execute(sql`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`);
+        const [{ count }] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(links)
+          .where(eq(links.user_id, user.id));
+
+        if (count >= user.link_limit) {
+          throw new LinkLimitReachedError();
+        }
+      }
+
+      return tx
+        .insert(links)
+        .values({
+          original_url: url,
+          short_code: shortCode,
+          user_id: user?.id || null,
+          // Never fetch user-provided URLs from the server. It creates an SSRF
+          // primitive and makes link creation dependent on third-party hosts.
+          title: url,
+          password_hash: passwordHash,
+          expires_at: resolvedExpiry,
+        })
+        .returning();
+    });
+
+    return NextResponse.json({ success: true, data: toLinkResponse(newLink) });
   } catch (error) {
+    if (error instanceof LinkLimitReachedError) {
+      return NextResponse.json(
+        { success: false, error: { code: "LINK_LIMIT_REACHED", message: "You have reached your link limit." } },
+        { status: 403 }
+      );
+    }
     console.error("POST /api/links error:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },

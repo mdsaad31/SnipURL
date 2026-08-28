@@ -10,8 +10,8 @@ export async function POST(req: Request) {
   const WEBHOOK_SECRET = env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
-    console.warn("CLERK_WEBHOOK_SECRET not configured — skipping webhook verification");
-    return new Response("Webhook secret not configured", { status: 200 });
+    console.error("CLERK_WEBHOOK_SECRET is not configured");
+    return new Response("Webhook secret not configured", { status: 503 });
   }
 
   // Get the headers (must be awaited in Next.js 14.2+)
@@ -24,8 +24,9 @@ export async function POST(req: Request) {
     return new Response("Missing svix headers", { status: 400 });
   }
 
-  const payload = await req.json();
-  const body = JSON.stringify(payload);
+  // Svix signs the exact raw payload. Parsing and serializing JSON can change
+  // whitespace or escaping and make otherwise valid webhooks fail verification.
+  const body = await req.text();
 
   const wh = new Webhook(WEBHOOK_SECRET);
 

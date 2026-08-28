@@ -5,6 +5,7 @@ import { requireAuth } from "../../../../lib/auth";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { toLinkResponse } from "../../../../lib/link-response";
 
 const updateLinkSchema = z.object({
   title: z.string().optional(),
@@ -90,7 +91,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .where(and(eq(links.id, id), eq(links.user_id, user.id)))
       .returning();
 
-    return NextResponse.json({ success: true, data: updatedLink });
+    return NextResponse.json({ success: true, data: toLinkResponse(updatedLink) });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json(

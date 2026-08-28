@@ -25,8 +25,9 @@ export function MonetagAds() {
       return false;
     }
 
-    // Exclude password challenge/redirect pages
-    if (pathname.endsWith("/challenge")) {
+    // Never run third-party advertising code on authenticated or sensitive
+    // surfaces. Dashboard pages expose link destinations and analytics.
+    if (pathname.startsWith("/dashboard") || pathname.endsWith("/challenge")) {
       return false;
     }
 

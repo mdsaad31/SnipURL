@@ -11,7 +11,7 @@ export interface LinkData {
   title: string | null;
   clicks_count: number;
   is_active: boolean;
-  password_hash: string | null;
+  has_password: boolean;
   expires_at: string | null;
   created_at: string;
   updated_at: string;

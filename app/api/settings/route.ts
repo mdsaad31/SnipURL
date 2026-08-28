@@ -7,7 +7,6 @@ import { z } from "zod";
 
 const updateSettingsSchema = z.object({
   default_expiry_hours: z.number().int().min(1).max(8760).nullable().optional(),
-  link_limit: z.number().int().min(10).max(10000).optional(),
 });
 
 export async function GET() {
@@ -68,10 +67,6 @@ export async function PATCH(req: NextRequest) {
 
     if (parsed.data.default_expiry_hours !== undefined) {
       updateData.default_expiry_hours = parsed.data.default_expiry_hours;
-    }
-
-    if (parsed.data.link_limit !== undefined) {
-      updateData.link_limit = parsed.data.link_limit;
     }
 
     const [updated] = await db

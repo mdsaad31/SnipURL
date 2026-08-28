@@ -3,6 +3,7 @@ import { db } from "../../../../lib/db";
 import { links } from "../../../../lib/db/schema";
 import { requireAuth } from "../../../../lib/auth";
 import { eq, and, sql } from "drizzle-orm";
+import { toLinkResponse } from "../../../../lib/link-response";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -177,7 +178,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({
       success: true,
       data: {
-        link,
+        link: toLinkResponse(link),
         totalClicks,
         timeSeries,
         referrers,
